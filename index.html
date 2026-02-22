@@ -449,12 +449,9 @@ function ShelfConstructor({furn,onClose,onChange,highlightShelfDbId=null}){
   const[sel,setSel]=useState(null);
   const[search,setSearch]=useState("");
   const selData=sel?grid[sel.row]?.[sel.col]:null;
-  // Clear search when switching slots
-  const prevSel=useRef(null);
-  if(sel?.row!==prevSel.current?.row||sel?.col!==prevSel.current?.col){
-    prevSel.current=sel;
-    if(search) setSearch("");
-  }
+  // Clear search when switching slots — useEffect, never during render
+  const selKey=sel?sel.row+"-"+sel.col:null;
+  useEffect(()=>{ setSearch(""); },[selKey]);
   const selShelfDef=selData?SHELF_TYPES.find(s=>s.type===selData.shelfType):null;
   const def=furnDef(furn.type);
   const zInfo=Z_LEVELS.find(z=>z.v===(furn.z??0));
@@ -484,7 +481,7 @@ function ShelfConstructor({furn,onClose,onChange,highlightShelfDbId=null}){
       items=items.filter(it=>allowed.includes(it.tags.size));
     }
     const s=search.toLowerCase().trim();
-    if(s) items=items.filter(it=>it.name.toLowerCase().includes(s)||it.tags.type.toLowerCase().includes(s));
+    if(s) items=items.filter(it=>it.name.toLowerCase().includes(s)||(it.tags?.type||"").toString().toLowerCase().includes(s));
     return items;
   },[selData?.shelfType,selData?.size,search,ITEM_TYPES.length]);
 
@@ -563,21 +560,24 @@ function ShelfConstructor({furn,onClose,onChange,highlightShelfDbId=null}){
 
           // Item assignment
           selData.itemId&&e("button",{className:"btn sec sm",onClick:clearItem,style:{width:"100%"}},"✕ Clear type"),
-          filtItems.length===0
-            ? e("div",{style:{fontSize:11,color:"var(--text3)"}},selData.shelfType==="hanger"?"Only clothing can be stored here":"No items for this size")
-            : e("div",null,
-                e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:5}},
-                  "Assign item type (",filtItems.length,"):"),
-                e("input",{className:"item-search",placeholder:"Search...",maxLength:60,value:search,onChange:x=>setSearch(x.target.value.slice(0,60))}),
-                e("div",{className:"item-list",style:{maxHeight:140}},
-                  filtItems.slice(0,60).map(it=>e("div",{key:it.id,
-                    className:"item-row"+(selData.itemId===it.id?" on":""),
-                    onClick:()=>assignItem(it.id)},
-                    e("span",{style:{flex:1,fontSize:11}},it.name),
-                    e("span",{className:"item-tag"},it.tags.size)
-                  ))
-                )
-              )
+          e("div",null,
+              e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:5}},
+                "Assign item type (",filtItems.length,"):"),
+              e("input",{className:"item-search",placeholder:"Search...",maxLength:60,value:search,
+                onChange:x=>setSearch(x.target.value.slice(0,60))}),
+              filtItems.length===0
+                ? e("div",{style:{fontSize:11,color:"var(--text3)",padding:"6px 0"}},
+                    search?"No results for \""+search+"\"":selData.shelfType==="hanger"?"Only clothing can be stored here":"No items for this size"
+                  )
+                : e("div",{className:"item-list",style:{maxHeight:140}},
+                    filtItems.slice(0,60).map(it=>e("div",{key:it.id,
+                      className:"item-row"+(selData.itemId===it.id?" on":""),
+                      onClick:()=>assignItem(it.id)},
+                      e("span",{style:{flex:1,fontSize:11}},it.name),
+                      e("span",{className:"item-tag"},it.tags.size)
+                    ))
+                  )
+            )
 
         ) : e("div",{style:{color:"var(--text3)",fontSize:12,padding:"12px 0",lineHeight:1.7}},
             "← Click a slot to configure its type and capacity")
