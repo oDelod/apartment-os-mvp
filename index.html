@@ -1608,9 +1608,11 @@ function NotificationBanner({userId}){
 
   // Dismiss all currently visible item IDs for this banner type
   const dismissAll=(items,storeKey,setter)=>{
-    const newSet=new Set(items.map(a=>a.id));
-    saveDismissed(storeKey,newSet);
-    setter(newSet);
+    setter(prev=>{
+      const newSet=new Set([...prev,...items.map(a=>a.id)]);
+      saveDismissed(storeKey,newSet);
+      return newSet;
+    });
   };
 
   // Only show items that haven't been dismissed
@@ -1643,7 +1645,7 @@ function NotificationBanner({userId}){
             }).join(" · ")
           )
         ),
-        e("button",{
+        e("button",{type:"button",
           onClick:onDismiss,
           title:"Dismiss — won't show again until new items appear",
           style:{background:"none",border:"1px solid "+borderColor,borderRadius:6,
@@ -1832,7 +1834,7 @@ function App(){
       }
 
       (fs||[]).forEach(f=>{
-        const parentRoom=localRooms.find(r=>r.dbId===f.room_id);
+        const parentRoom=localRooms.find(r=>Number(r.dbId)===Number(f.room_id));
         if(!parentRoom)return;
 
         // Rebuild shelfGrid from flat shelves rows
@@ -1903,13 +1905,13 @@ function App(){
           shelves:(f.shelfGrid||[]).flatMap((row,ri)=>
             row.map((cell,ci)=>({
               localId:cell.id,
-              level:f.z||0,
+              shelfDbId:cell.shelfDbId||null,
+              level:ri,
               position:ci,
+              flex:Math.max(1,Math.min(10,cell.flex||1)),
               shelf_type:cell.shelfType||"shelf",
               size_class:cell.size||"medium",
-              flex:cell.flex||1,
-              item_type_id:cell.itemId||null,
-              allowed_types:cell.itemId?[cell.itemId]:null
+              item_type_id:cell.itemId||null
             }))
           )
         }))
@@ -1949,14 +1951,22 @@ function App(){
         dbId:idMap[r.localId]||r.dbId||null
       })));
 
-      // Update furniture with new dbIds and correct roomDbIds
+      // Update furniture with new dbIds, roomDbIds, AND shelfDbIds from idMap
       setFurniture(prev=>{
         const next={};
         Object.entries(prev).forEach(([roomLocalId,farr])=>{
           next[roomLocalId]=farr.map(f=>({
             ...f,
             dbId:idMap[f.localId]||f.dbId||null,
-            roomDbId:idMap[roomLocalId]||f.roomDbId||null
+            roomDbId:idMap[roomLocalId]||f.roomDbId||null,
+            // Update shelfDbId for every cell — without this, each save re-inserts
+            // shelves with new IDs, breaking user_items.shelf_id references
+            shelfGrid:f.shelfGrid?f.shelfGrid.map(row=>
+              row.map(cell=>({
+                ...cell,
+                shelfDbId:idMap[cell.id]||cell.shelfDbId||null
+              }))
+            ):null
           }));
         });
         return next;
