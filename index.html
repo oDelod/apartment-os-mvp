@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ApartmentOS</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--surface3:#252538;
+  --border:#2a2a42;--accent:#6366f1;--accent2:#ec4899;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --success:#10b981;--danger:#ef4444;
+  --radius:10px;--font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow:hidden}
+button{font-family:var(--font);cursor:pointer}
+.auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 30% 50%,#1e1b4b,#0a0a0f)}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:44px;width:380px;display:flex;flex-direction:column;gap:20px}
+.auth-title{font-size:26px;font-weight:800;letter-spacing:-1px;background:linear-gradient(135deg,#6366f1,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.auth-sub{color:var(--text2);font-size:13px;margin-top:-12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:1px;text-transform:uppercase}
+.input{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border-color .2s;width:100%}
+.input:focus{border-color:var(--accent)}
+.btn{background:var(--accent);border:none;border-radius:var(--radius);padding:12px 18px;color:#fff;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap}
+.btn:hover{opacity:.85}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sec{background:var(--surface2);border:1px solid var(--border);color:var(--text2)}
+.btn.danger{background:var(--danger)}.btn.sm{padding:6px 13px;font-size:12px}
+.err{color:var(--danger);font-size:12px;background:#ef444415;border-radius:8px;padding:9px 12px}
+.toggle-link{color:var(--text2);font-size:13px;text-align:center}
+.toggle-link span{color:var(--accent);font-weight:600;cursor:pointer}
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
+.logo{font-size:17px;font-weight:800;background:linear-gradient(135deg,#6366f1,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;flex-shrink:0}
+.apt-sel{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:12px;padding:7px 11px;outline:none;cursor:pointer;max-width:180px}
+.spacer{flex:1}
+.save-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);font-family:var(--mono)}
+.save-dot{width:6px;height:6px;border-radius:50%;background:var(--success);transition:background .3s}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.save-dot.saving{animation:pulse 1s infinite}.save-dot.errr{background:var(--danger)}
+.workspace{display:flex;flex:1;overflow:hidden}
+.sidebar{width:210px;min-width:210px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-head{padding:12px 14px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.sidebar-title{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;flex:1}
+.room-list{flex:1;overflow-y:auto;padding:8px}
+.room-list::-webkit-scrollbar{width:3px}
+.room-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.room-chip{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:background .15s;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--text2);width:100%;text-align:left}
+.room-chip:hover{background:var(--surface2)}.room-chip.active{background:var(--surface3);color:var(--text)}
+.room-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.room-chip-del{margin-left:auto;opacity:0;font-size:12px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 4px;border-radius:4px}
+.room-chip:hover .room-chip-del{opacity:1}.room-chip-del:hover{color:var(--danger)}
+.canvas-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.canvas-toolbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.canvas-name{font-size:13px;font-weight:700;color:var(--text2)}
+#room-canvas{flex:1;position:relative;overflow:auto;background:var(--bg);cursor:default}
+.canvas-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.35;pointer-events:none}
+.furn-node{position:absolute;border-radius:8px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;border:2px solid transparent;transition:border-color .15s,box-shadow .15s;font-size:11px;font-weight:700;text-align:center;overflow:hidden}
+.furn-node:active{cursor:grabbing}
+.furn-label{font-size:10px;font-weight:700;opacity:.9;padding:0 4px;line-height:1.2;pointer-events:none}
+.furn-icon{font-size:22px;pointer-events:none;line-height:1}
+.right-panel{width:295px;min-width:295px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.rp-head{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.rp-title{font-size:14px;font-weight:700;flex:1}
+.rp-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:13px}
+.rp-body::-webkit-scrollbar{width:3px}
+.rp-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.sec-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
+.form-row{display:flex;gap:7px}
+.num-field{display:flex;flex-direction:column;gap:4px;flex:1}
+.num-field label{font-size:10px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;font-weight:600}
+.z-group{display:flex;gap:5px}
+.z-btn{flex:1;padding:8px 4px;border-radius:7px;cursor:pointer;border:2px solid var(--border);background:var(--surface2);color:var(--text2);font-size:10px;font-weight:700;font-family:var(--font);transition:all .15s;text-align:center}
+.seg-btn{flex:1;padding:7px 3px;border-radius:7px;cursor:pointer;border:2px solid var(--border);background:var(--surface2);color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);transition:all .15s}
+.seg-btn.on{border-color:var(--accent);background:#6366f118;color:var(--accent)}
+.sep{height:1px;background:var(--border)}
+.open-constructor-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border-radius:8px;border:1.5px dashed var(--accent);background:#6366f108;color:var(--accent);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.open-constructor-btn:hover{background:#6366f118}
+.modal-bg{position:fixed;inset:0;background:#000d;z-index:1000;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:16px;box-shadow:0 24px 80px #000c;max-height:94vh;overflow:hidden}
+.modal-sm{width:min(400px,95vw)}
+.modal-lg{width:min(840px,96vw)}
+.modal-title{font-size:17px;font-weight:800;flex-shrink:0}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.constructor-body{display:flex;gap:14px;flex:1;overflow:hidden;min-height:0}
+.constr-left{display:flex;flex-direction:column;gap:10px;width:210px;flex-shrink:0;overflow-y:auto}
+.constr-left::-webkit-scrollbar{width:3px}
+.constr-left::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.constr-canvas{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.shelf-visual{flex:1;border:2px solid var(--border);border-radius:10px;overflow:auto;background:var(--surface2);padding:8px;display:flex;flex-direction:column;gap:4px;min-height:260px}
+.shelf-row-vis{display:flex;gap:4px;min-height:44px}
+.shelf-cell{border-radius:6px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;padding:4px;transition:all .15s;position:relative;min-width:44px}
+.shelf-cell:hover{border-color:var(--accent);background:#6366f110}
+.shelf-cell.sel{border-color:var(--accent);background:#6366f118;box-shadow:0 0 0 2px #6366f130}
+.shelf-cell-item{font-size:9px;font-weight:700;color:var(--accent2);text-align:center;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.shelf-cell-size{font-size:8px;color:var(--text3);font-family:var(--mono)}
+.add-row-btn,.add-col-btn{background:none;border:1.5px dashed var(--border);border-radius:6px;color:var(--text3);cursor:pointer;font-family:var(--font);font-size:11px;font-weight:700;transition:all .15s}
+.add-row-btn{padding:5px;margin-left:20px;width:calc(100% - 20px)}
+.add-row-btn:hover,.add-col-btn:hover{border-color:var(--accent);color:var(--accent);background:#6366f108}
+.add-col-btn{padding:5px 10px;min-width:30px;align-self:stretch}
+.cell-editor{background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;flex:1}
+.cell-editor-title{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
+.item-search{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;width:100%}
+.item-search:focus{border-color:var(--accent)}
+.item-list{overflow-y:auto;max-height:200px;display:flex;flex-direction:column;gap:2px}
+.item-list::-webkit-scrollbar{width:3px}
+.item-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.item-row{padding:6px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text2);transition:all .15s;display:flex;align-items:center;gap:6px}
+.item-row:hover{background:var(--surface2);color:var(--text)}.item-row.on{background:#6366f118;color:var(--accent)}
+.item-tag{font-size:9px;font-family:var(--mono);background:var(--surface3);border-radius:3px;padding:1px 4px;color:var(--text3)}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;flex:1;color:var(--text3);text-align:center;padding:40px}
+.empty-icon{font-size:44px;opacity:.25}.empty-text{font-size:14px;font-weight:600}.empty-sub{font-size:12px;opacity:.6}
+.furn-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.ftype-btn{padding:8px 6px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .15s;text-align:center}
+.ftype-btn:hover{border-color:var(--accent);color:var(--accent);background:#6366f110}
+.ftype-btn.on{border-color:var(--accent);background:#6366f118;color:var(--accent)}
+.type-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.type-chip{padding:6px 11px;border-radius:7px;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);transition:all .15s}
+.rot-group{display:flex;gap:4px}
+.rot-btn{flex:1;padding:7px 0;border-radius:7px;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);transition:all .15s}
+.rot-btn.on{border-color:var(--accent);background:#6366f118;color:var(--accent)}
+.icon-btn{background:transparent;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:4px;font-size:14px;transition:all .15s;line-height:1}
+.icon-btn:hover{color:var(--text);background:var(--surface3)}.icon-btn.del:hover{color:var(--danger)}
+.row-handle{display:flex;align-items:center;width:18px;flex-direction:column;justify-content:center;gap:1px;flex-shrink:0}
+.row-lbl{font-size:8px;color:var(--text3);font-family:var(--mono)}
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes bounceIn {
+  0%   { transform: translateX(-50%) scale(.7); opacity:0; }
+  70%  { transform: translateX(-50%) scale(1.1); }
+  100% { transform: translateX(-50%) scale(1); opacity:1; }
+}
+@keyframes pulse-highlight {
+  0%,100% { box-shadow: 0 0 0 3px #fbbf2480, 0 0 24px #fbbf2460; }
+  50%      { box-shadow: 0 0 0 6px #fbbf24cc, 0 0 40px #fbbf2490; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
+const e=React.createElement;
+
+/* ─── Supabase ─── */
+const SB_URL="https://nfhtywzgedmpwkgfoopp.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5maHR5d3pnZWRtcHdrZ2Zvb3BwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NDk2MDgsImV4cCI6MjA4NzAyNTYwOH0.bGIicmvQtYm3AQ_-muKNJa5gOaPTLtv-T_GqPVm9oR0";
+const sb={
+  getToken(){return localStorage.getItem("sb_t");},
+  setSession(d){
+    if(d.access_token)localStorage.setItem("sb_t",d.access_token);
+    if(d.refresh_token)localStorage.setItem("sb_r",d.refresh_token);
+  },
+  clearSession(){localStorage.removeItem("sb_t");localStorage.removeItem("sb_r");},
+
+  /* Refresh the access token using the stored refresh_token */
+  async refresh(){
+    const rt=localStorage.getItem("sb_r");
+    if(!rt)throw new Error("No refresh token");
+    const r=await fetch(SB_URL+"/auth/v1/token?grant_type=refresh_token",{
+      method:"POST",
+      headers:{"Content-Type":"application/json",apikey:SB_KEY},
+      body:JSON.stringify({refresh_token:rt})
+    });
+    const d=await r.json();
+    if(!r.ok)throw d;
+    this.setSession(d);
+    return d.access_token;
+  },
+
+  /* Check if JWT is expired (with 60s buffer) */
+  isExpired(){
+    const t=this.getToken();
+    if(!t)return true;
+    try{
+      const payload=JSON.parse(atob(t.split(".")[1]));
+      return (payload.exp - 60) < Math.floor(Date.now()/1000);
+    }catch{return true;}
+  },
+
+  /* Get valid token, refreshing if needed */
+  async validToken(){
+    if(this.isExpired()){
+      try{return await this.refresh();}
+      catch{this.clearSession();window.location.reload();return null;}
+    }
+    return this.getToken();
+  },
+
+  hdr(withPrefer){
+    const h={"Content-Type":"application/json",apikey:SB_KEY};
+    if(withPrefer)h["Prefer"]="return=representation";
+    const t=this.getToken();
+    if(t)h.Authorization="Bearer "+t;
+    return h;
+  },
+
+  async q(path,method,body){
+    await this.validToken(); // ensure fresh token before every request
+    const r=await fetch(SB_URL+"/rest/v1/"+path,{method:method||"GET",headers:this.hdr(true),body:body?JSON.stringify(body):undefined});
+    const txt=await r.text();const d=txt?JSON.parse(txt):null;if(!r.ok)throw d;return d;
+  },
+
+  async auth(email,pw,action){
+    const r=await fetch(SB_URL+"/auth/v1/"+action,{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY},body:JSON.stringify({email,password:pw})});
+    const d=await r.json();if(!r.ok)throw d;return d;
+  }
+};
+
+/* ─── Constants ─── */
+const ROOM_TYPES=["kitchen","bathroom","bedroom","living_room","hallway","office","storage"];
+const ROOM_COLORS={
+  kitchen:"#fbbf24",bathroom:"#38bdf8",bedroom:"#a78bfa",
+  living_room:"#34d399",hallway:"#fb923c",office:"#60a5fa",storage:"#94a3b8"
+};
+
+/* ══════════════════════════════════════════════════════════════
+   ANCHOR FURNITURE — structural elements required for proximity rules.
+   Grouped by room. rooms:[] = any room.
+══════════════════════════════════════════════════════════════ */
+const ANCHOR_GROUPS=[
+  {
+    key:"kitchen", label:"🍳 Kitchen", color:"#fbbf24",
+    items:[
+      {type:"stove",        icon:"🔥",label:"Stove",            w:80, h:60, color:"#f97316"},
+      {type:"sink",         icon:"🚰",label:"Kitchen Sink",            w:60, h:50, color:"#38bdf8"},
+      {type:"dishwasher",   icon:"🫧",label:"Dishwasher",      w:60, h:60, color:"#34d399"},
+      {type:"prep_zone",    icon:"🔪",label:"Prep Zone",  w:100,h:60, color:"#fbbf24"},
+      {type:"fridge",       icon:"🧊",label:"Fridge",      w:70, h:80, color:"#60a5fa"},
+      {type:"window",       icon:"🪟",label:"Window",            w:100,h:20, color:"#94a3b8"},
+      {type:"socket_k",     icon:"🔌",label:"Socket",          w:20, h:20, color:"#f59e0b"},
+    ]
+  },
+  {
+    key:"bathroom", label:"🚿 Bathroom", color:"#38bdf8",
+    items:[
+      {type:"shower",          icon:"🚿",label:"Shower",              w:80, h:80,  color:"#38bdf8"},
+      {type:"bathtub",         icon:"🛁",label:"Bathtub",             w:80, h:160, color:"#60a5fa"},
+      {type:"washing_machine", icon:"🌀",label:"Washing Machine",    w:60, h:60,  color:"#8b5cf6"},
+      {type:"mirror_bath",     icon:"🪞",label:"Mirror",          w:60, h:10,  color:"#cbd5e1"},
+      {type:"sink_bath",       icon:"🚰",label:"Sink",        w:60, h:50,  color:"#38bdf8"},
+      {type:"toilet",          icon:"🚽",label:"Toilet",            w:50, h:70,  color:"#94a3b8"},
+      {type:"socket_b",        icon:"🔌",label:"Socket",           w:20, h:20,  color:"#f59e0b"},
+    ]
+  },
+  {
+    key:"bedroom", label:"🛏 Bedroom", color:"#a78bfa",
+    items:[
+      {type:"bed",            icon:"🛏",label:"Bed",              w:160,h:200, color:"#a78bfa"},
+      {type:"wardrobe_anchor",icon:"🚪",label:"Wardrobe (anchor)",    w:200,h:60,  color:"#ec4899"},
+      {type:"nightstand_anchor",icon:"🕯",label:"Nightstand (anchor)", w:50, h:50,  color:"#a78bfa"},
+      {type:"vanity",         icon:"💄",label:"Vanity",   w:80, h:50,  color:"#f472b6"},
+      {type:"bedroom_mirror", icon:"🪞",label:"Mirror (bedroom)", w:40, h:100, color:"#cbd5e1"},
+    ]
+  },
+  {
+    key:"living_room", label:"🛋 Living Room", color:"#34d399",
+    items:[
+      {type:"sofa",        icon:"🛋",label:"Sofa",           w:200,h:80,  color:"#60a5fa"},
+      {type:"tv",          icon:"📺",label:"TV",        w:140,h:20,  color:"#6366f1"},
+      {type:"desk_anchor", icon:"🖥", label:"Desk",   w:120,h:60,  color:"#34d399"},
+      {type:"dining_table",icon:"🍽",label:"Dining Table",    w:140,h:80,  color:"#fbbf24"},
+      {type:"window_l",    icon:"🪟",label:"Window",            w:120,h:20,  color:"#94a3b8"},
+      {type:"socket_l",    icon:"🔌",label:"Socket",          w:20, h:20,  color:"#f59e0b"},
+    ]
+  },
+  {
+    key:"universal", label:"🔧 Universal", color:"#94a3b8",
+    items:[
+      {type:"window_u", icon:"🪟",label:"Window",   w:100,h:20, color:"#94a3b8"},
+      {type:"door",     icon:"🚪",label:"Door",   w:80, h:20,  color:"#64748b"},
+      {type:"socket_u", icon:"🔌",label:"Socket",  w:20, h:20,  color:"#f59e0b"},
+    ]
+  },
+];
+
+/* ══════════════════════════════════════════════════════════════
+   STORAGE FURNITURE — shelf containers.
+   rooms:[] = suitable for any room.
+══════════════════════════════════════════════════════════════ */
+const STORAGE_GROUPS=[
+  {
+    key:"universal", label:"🔧 Universal", color:"#6366f1",
+    items:[
+      {type:"wardrobe",    icon:"🗄", label:"Wardrobe",              w:180,h:60,  color:"#ec4899"},
+      {type:"cabinet",     icon:"🗃", label:"Cabinet",              w:80, h:60,  color:"#6366f1"},
+      {type:"shelf_unit",  icon:"📚", label:"Shelf Unit",             w:80, h:200, color:"#8b5cf6"},
+      {type:"drawer_unit", icon:"🗂", label:"Drawer Unit",      w:60, h:80,  color:"#6366f1"},
+      {type:"dresser",     icon:"🪞", label:"Dresser",              w:100,h:50,  color:"#ec4899"},
+      {type:"rack",        icon:"🏗", label:"Open Rack",   w:80, h:180, color:"#64748b"},
+      {type:"hanger_zone", icon:"🪝", label:"Hanger Zone",       w:120,h:30,  color:"#f97316"},
+      {type:"table_stor",  icon:"🪑", label:"Table/Surface",      w:100,h:60,  color:"#34d399"},
+      {type:"desk",        icon:"🖥", label:"Desk (storage)",  w:120,h:60,  color:"#34d399"},
+    ]
+  },
+  {
+    key:"kitchen", label:"🍳 Kitchen", color:"#fbbf24",
+    items:[
+      {type:"kitchen_cabinet",    icon:"🗃",label:"Kitchen Cabinet",      w:80, h:60,  color:"#fbbf24"},
+      {type:"under_sink_cabinet", icon:"🪣",label:"Under-sink Cabinet",   w:60, h:60,  color:"#38bdf8"},
+      {type:"pantry",             icon:"🥫",label:"Pantry",   w:60, h:120, color:"#f97316"},
+      {type:"fridge_zone",        icon:"🧊",label:"Fridge Zone", w:70, h:80,  color:"#60a5fa"},
+    ]
+  },
+  {
+    key:"bathroom", label:"🚿 Bathroom", color:"#38bdf8",
+    items:[
+      {type:"bathroom_cabinet",icon:"💊",label:"Bathroom Cabinet",     w:60, h:40,  color:"#38bdf8"},
+      {type:"laundry_unit",    icon:"👕",label:"Laundry Unit",  w:60, h:60,  color:"#8b5cf6"},
+    ]
+  },
+  {
+    key:"living_room", label:"🛋 Living Room", color:"#34d399",
+    items:[
+      {type:"tv_unit",  icon:"📺",label:"TV Unit",    w:160,h:50,  color:"#6366f1"},
+      {type:"bookcase", icon:"📖",label:"Bookcase",   w:80, h:200, color:"#34d399"},
+    ]
+  },
+  {
+    key:"bedroom", label:"🛏 Bedroom", color:"#a78bfa",
+    items:[
+      {type:"bedside_table",icon:"🕯",label:"Bedside Table", w:50, h:50,  color:"#a78bfa"},
+    ]
+  },
+];
+
+/* Flat lists */
+const ALL_ANCHOR=ANCHOR_GROUPS.flatMap(g=>g.items.map(i=>({...i,rooms:[g.key==="universal"?[]:g.key]})));
+const ALL_STORAGE=STORAGE_GROUPS.flatMap(g=>g.items.map(i=>({...i,rooms:[g.key==="universal"?[]:g.key]})));
+const ALL_FURN=[...ALL_ANCHOR,...ALL_STORAGE];
+
+const furnDef=t=>ALL_FURN.find(f=>f.type===t)||{icon:"📦",label:t,color:"#6366f1",w:80,h:60};
+const ANCHOR_STORAGE_TYPES=new Set(["fridge","wardrobe_anchor","nightstand_anchor","vanity","desk_anchor"]);
+const ANCHOR_MULTI_TYPES=new Set(["fridge","dishwasher","washing_machine"]);
+const isFurnStorage=f=>{
+  const t=f.type||f;
+  return ALL_STORAGE.some(x=>x.type===t)||f.category==="storage"||ANCHOR_STORAGE_TYPES.has(t);
+};
+// Multi-type: shelf allows mixed item types (e.g. fridge can have food + drinks)
+const isFurnMultiType=f=>ANCHOR_MULTI_TYPES.has(f.type||f);
+
+/* ══════════════════════════════════════════════════════════════
+   SHELF / COMPARTMENT TYPES — logical containers inside furniture.
+   Size = compatibility constraint system, not geometry.
+══════════════════════════════════════════════════════════════ */
+const SHELF_TYPES=[
+  {type:"shelf",      icon:"▬",label:"Shelf",             color:"#3b82f6", desc:"Open horizontal surface"},
+  {type:"drawer",     icon:"▭",label:"Drawer",            color:"#8b5cf6", desc:"Pull-out drawer"},
+  {type:"hanger",     icon:"🪝",label:"Hanger Zone",      color:"#f97316", desc:"For hanging clothes"},
+  {type:"container",  icon:"📦",label:"Container",  color:"#6366f1", desc:"Separate zone or basket"},
+  {type:"surface",    icon:"⬜",label:"Surface",          color:"#34d399", desc:"Open flat surface"},
+  {type:"compartment",icon:"🔲",label:"Closed Compartment",   color:"#ec4899", desc:"Closed section behind doors"},
+  {type:"rack",       icon:"🏗", label:"Rack/Grid",   color:"#64748b", desc:"Open shelf or grid"},
+  {type:"hidden",     icon:"👁", label:"Hidden Space",color:"#1e293b",desc:"Hidden zone"},
+];
+
+/* SIZE = logical filter and compatibility rule */
+const SIZE_CLASSES=["tiny","small","medium","large","xl"];
+
+/* Which item classes fit in a slot of given type and size */
+const SIZE_CAPACITY={
+  shelf:      {tiny:["tiny"],small:["tiny","small"],medium:["tiny","small","medium"],large:["tiny","small","medium","large"],xl:["tiny","small","medium","large","xl"]},
+  drawer:     {tiny:["tiny"],small:["tiny","small"],medium:["tiny","small","medium"],large:["tiny","small","medium","large"]},
+  hanger:     {small:["small"],medium:["small","medium"],large:["small","medium","large"],xl:["small","medium","large","xl"]},
+  container:  {tiny:["tiny"],small:["tiny","small"],medium:["tiny","small","medium"],large:["tiny","small","medium","large"],xl:["tiny","small","medium","large","xl"]},
+  surface:    {tiny:["tiny"],small:["tiny","small"],medium:["tiny","small","medium"],large:["tiny","small","medium","large"],xl:["tiny","small","medium","large","xl"]},
+  compartment:{tiny:["tiny"],small:["tiny","small"],medium:["tiny","small","medium"],large:["tiny","small","medium","large"]},
+  rack:       {small:["small"],medium:["small","medium"],large:["small","medium","large"],xl:["small","medium","large","xl"]},
+  hidden:     {medium:["medium"],large:["medium","large"],xl:["medium","large","xl"]},
+};
+
+/* Valid sizes per shelf type */
+const VALID_SIZES={
+  shelf:      ["tiny","small","medium","large","xl"],
+  drawer:     ["tiny","small","medium","large"],
+  hanger:     ["small","medium","large","xl"],
+  container:  ["tiny","small","medium","large","xl"],
+  surface:    ["tiny","small","medium","large","xl"],
+  compartment:["tiny","small","medium","large"],
+  rack:       ["small","medium","large","xl"],
+  hidden:     ["medium","large","xl"],
+};
+
+const Z_LEVELS=[
+  {v:0,label:"Floor", icon:"👟",color:"#3b82f6"},
+  {v:1,label:"Waist", icon:"🧥",color:"#8b5cf6"},
+  {v:2,label:"Head",icon:"🎩",color:"#ec4899"}
+];
+
+const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+"_"+Math.random().toString(36).slice(2,7);
+
+/* ══════════════════════════════════════════════════════════════
+   ITEM TYPES — loaded from Supabase items table at runtime.
+   size: tiny | small | medium | large | xl
+   level: legs | waist | head  (recommended storage height)
+══════════════════════════════════════════════════════════════ */
+// ITEM_TYPES is loaded from Supabase 'items' table at runtime
+let ITEM_TYPES=[];
+const snap=v=>Math.round(v/20)*20;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ─── Auth ─── */
+function AuthScreen({onAuth}){
+  const[mode,setMode]=useState("login");
+  const[email,setEmail]=useState("");
+  const[pass,setPass]=useState("");
+  const[err,setErr]=useState("");
+  const[loading,setLoading]=useState(false);
+  async function submit(){
+    setErr("");setLoading(true);
+    try{const a=mode==="login"?"token?grant_type=password":"signup";const d=await sb.auth(email,pass,a);sb.setSession(d);onAuth(d);}
+    catch(ex){setErr(ex.error_description||ex.msg||ex.message||"Error");}
+    setLoading(false);
+  }
+  return e("div",{className:"auth-wrap"},
+    e("div",{className:"auth-card"},
+      e("div",null,e("div",{className:"auth-title"},"ApartmentOS"),e("div",{className:"auth-sub"},"Apartment Layout Editor")),
+      err&&e("div",{className:"err"},err),
+      e("div",{className:"field"},e("label",null,"Email"),e("input",{className:"input",type:"email",value:email,placeholder:"you@example.com",onChange:x=>setEmail(x.target.value),onKeyDown:x=>x.key==="Enter"&&submit()})),
+      e("div",{className:"field"},e("label",null,"Password"),e("input",{className:"input",type:"password",value:pass,placeholder:"••••••••",onChange:x=>setPass(x.target.value),onKeyDown:x=>x.key==="Enter"&&submit()})),
+      e("button",{className:"btn",onClick:submit,disabled:loading},loading?"...":mode==="login"?"Sign In":"Sign up"),
+      e("div",{className:"toggle-link"},mode==="login"?"No account? ":"Have an account? ",e("span",{onClick:()=>{setMode(mode==="login"?"signup":"login");setErr("");}},mode==="login"?"Sign up":"Sign In"))
+    )
+  );
+}
+
+/* ─── Modal ─── */
+function Modal({title,onClose,onConfirm,confirmLabel,children,size}){
+  return e("div",{className:"modal-bg",onClick:x=>x.target===x.currentTarget&&onClose()},
+    e("div",{className:"modal modal-"+(size||"sm")},
+      e("div",{className:"modal-title"},title),
+      children,
+      e("div",{className:"modal-actions"},
+        e("button",{className:"btn sec sm",onClick:onClose},"Cancel"),
+        onConfirm&&e("button",{className:"btn sm",onClick:onConfirm},confirmLabel||"Save")
+      )
+    )
+  );
+}
+
+/* ─── Shelf Constructor ─── */
+function ShelfConstructor({furn,onClose,onChange,highlightShelfDbId=null}){
+  const init=furn.shelfGrid||[[{id:uid(),shelfType:"shelf",size:"medium",itemId:null,flex:2},{id:uid(),shelfType:"shelf",size:"medium",itemId:null,flex:2}],[{id:uid(),shelfType:"drawer",size:"medium",itemId:null,flex:1}]];
+  const[grid,setGrid]=useState(init);
+  const[sel,setSel]=useState(null);
+  const[search,setSearch]=useState("");
+  const selData=sel?grid[sel.row]?.[sel.col]:null;
+  const selShelfDef=selData?SHELF_TYPES.find(s=>s.type===selData.shelfType):null;
+  const def=furnDef(furn.type);
+  const zInfo=Z_LEVELS.find(z=>z.v===(furn.z??0));
+
+  function addRow(){setGrid(g=>[...g,[{id:uid(),shelfType:"shelf",size:"medium",itemId:null,flex:2}]]);}
+  function removeRow(ri){if(grid.length<=1)return;setGrid(g=>g.filter((_,i)=>i!==ri));if(sel&&sel.row===ri)setSel(null);}
+  function addCol(ri){setGrid(g=>g.map((row,i)=>i===ri?[...row,{id:uid(),shelfType:"shelf",size:"medium",itemId:null,flex:2}]:row));}
+  function removeCol(ri,ci){if(grid[ri].length<=1)return;setGrid(g=>g.map((row,i)=>i===ri?row.filter((_,j)=>j!==ci):row));if(sel&&sel.row===ri&&sel.col===ci)setSel(null);}
+
+  function updCell(ri,ci,patch){setGrid(g=>g.map((row,i)=>i===ri?row.map((c,j)=>j===ci?{...c,...patch}:c):row));}
+  function assignItem(itemId){if(!sel)return;updCell(sel.row,sel.col,{itemId});}
+  function clearItem(){if(!sel)return;updCell(sel.row,sel.col,{itemId:null});}
+  function save(){onChange({...furn,shelfGrid:grid});onClose();}
+
+  // Filter items by size compatibility
+  const filtItems=useMemo(()=>{
+    let items=ITEM_TYPES;
+    if(selData){
+      const allowed=SIZE_CAPACITY[selData.shelfType]?.[selData.size]||[];
+      items=items.filter(it=>allowed.includes(it.tags.size));
+    }
+    const s=search.toLowerCase().trim();
+    if(s)items=items.filter(it=>it.name.toLowerCase().includes(s)||it.tags.type.includes(s));
+    return items;
+  },[selData,search]);
+
+  // Cell background by shelf type
+  const cellBg={shelf:"#3b82f610",drawer:"#8b5cf610",hanger:"#f9731610",container:"#6366f110",
+    surface:"#34d39910",compartment:"#ec489910",rack:"#64748b10",hidden:"#0f172a20"};
+  const cellBorder={shelf:"#3b82f650",drawer:"#8b5cf650",hanger:"#f9731650",container:"#6366f150",
+    surface:"#34d39950",compartment:"#ec489950",rack:"#64748b50",hidden:"#64748b50"};
+
+  return e(Modal,{title:"Constructor: "+def.label,onClose,onConfirm:save,confirmLabel:"Save",size:"lg"},
+    e("div",{style:{fontSize:11,color:"var(--text2)",marginTop:-8}},"Level: ",e("span",{style:{color:zInfo.color}},zInfo.icon+" "+zInfo.label)),
+    e("div",{className:"constructor-body",style:{maxHeight:"62vh"}},
+
+      /* ── LEFT: cell editor ── */
+      e("div",{className:"constr-left"},
+        selData ? e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+
+          e("div",{className:"sec-label"},"Slot "+(sel.row+1)+"-"+(sel.col+1)),
+            // Items actually placed into this shelf (from DB)
+            (selData.items&&selData.items.length>0) ? e("div",{style:{background:"var(--surface3)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 10px",display:"flex",flexDirection:"column",gap:6}},
+              e("div",{style:{fontSize:10,fontWeight:800,color:"var(--text2)"}},`Items on this shelf: ${selData.items.length}`),
+              e("div",{style:{display:"flex",flexDirection:"column",gap:4,maxHeight:120,overflowY:"auto"}},
+                selData.items.slice().reverse().map(it=>e("div",{key:it.id||Math.random(),style:{fontSize:11,color:"var(--text)",display:"flex",justifyContent:"space-between",gap:8}},
+                  e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},it.name||("ID "+it.item_type_id)),
+                  (it.expiry||it.warranty) ? e("span",{style:{fontSize:10,color:"var(--text3)",fontFamily:"var(--mono)"}},(it.expiry?("⏳ "+it.expiry):"")+(it.expiry&&it.warranty?" · ":"")+(it.warranty?("🛡 "+it.warranty):"")) : null
+                ))
+              )
+            ) : null,
+
+
+          // Shelf type selector
+          e("div",{className:"field"},
+            e("label",null,"Slot type"),
+            e("div",{style:{display:"flex",flexDirection:"column",gap:3}},
+              SHELF_TYPES.map(st=>e("button",{key:st.type,
+                style:{display:"flex",alignItems:"center",gap:7,padding:"7px 10px",borderRadius:7,cursor:"pointer",textAlign:"left",
+                  border:"1.5px solid "+(selData.shelfType===st.type?cellBorder[st.type]||"var(--accent)":"var(--border)"),
+                  background:selData.shelfType===st.type?cellBg[st.type]||"#6366f110":"var(--surface2)",
+                  color:selData.shelfType===st.type?"var(--text)":"var(--text2)",
+                  fontSize:11,fontWeight:700,fontFamily:"var(--font)",transition:"all .15s"},
+                onClick:()=>{
+                  const validSizes=VALID_SIZES[st.type];
+                  const newSize=validSizes.includes(selData.size)?selData.size:validSizes[Math.floor(validSizes.length/2)];
+                  updCell(sel.row,sel.col,{shelfType:st.type,size:newSize,itemId:null});
+                }
+              },e("span",{style:{fontSize:14}},st.icon),e("span",{style:{flex:1}},st.label)))
+            )
+          ),
+
+          // Size selector (only valid sizes for this shelf type)
+          e("div",{className:"field"},
+            e("label",null,"Capacity (slot size)"),
+            e("div",{style:{display:"flex",gap:4,flexWrap:"wrap"}},
+              (VALID_SIZES[selData.shelfType]||SIZE_CLASSES).map(s=>e("button",{key:s,
+                style:{flex:1,minWidth:36,padding:"6px 4px",borderRadius:6,cursor:"pointer",
+                  border:"1.5px solid "+(selData.size===s?"var(--accent)":"var(--border)"),
+                  background:selData.size===s?"#6366f120":"var(--surface2)",
+                  color:selData.size===s?"var(--accent)":"var(--text2)",
+                  fontSize:11,fontWeight:700,fontFamily:"var(--font)"},
+                onClick:()=>updCell(sel.row,sel.col,{size:s,itemId:null})},s))
+            ),
+            // Capacity description
+            e("div",{style:{fontSize:9,color:"var(--text3)",marginTop:3,lineHeight:1.5}},
+              "Fits: "+(SIZE_CAPACITY[selData.shelfType]?.[selData.size]||[]).join(", ")||"—"
+            )
+          ),
+
+          // Flex size
+          e("div",{className:"field"},
+            e("label",null,"Relative size (1–10)"),
+            e("input",{className:"input",type:"number",min:1,max:10,value:selData.flex,
+              style:{padding:"7px 10px",fontSize:13},onChange:x=>updCell(sel.row,sel.col,{flex:Math.max(1,Math.min(10,parseInt(x.target.value)||1))})})
+          ),
+
+          e("div",{className:"sep"}),
+
+          // Item assignment
+          selData.itemId&&e("button",{className:"btn sec sm",onClick:clearItem,style:{width:"100%"}},"✕ Clear type"),
+          filtItems.length===0
+            ? e("div",{style:{fontSize:11,color:"var(--text3)"}},selData.shelfType==="hanger"?"Only clothing can be stored here":"No items for this size")
+            : e("div",null,
+                e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:5}},
+                  "Assign item type (",filtItems.length,"):"),
+                e("input",{className:"item-search",placeholder:"Search...",value:search,onChange:x=>setSearch(x.target.value)}),
+                e("div",{className:"item-list",style:{maxHeight:140}},
+                  filtItems.slice(0,60).map(it=>e("div",{key:it.id,
+                    className:"item-row"+(selData.itemId===it.id?" on":""),
+                    onClick:()=>assignItem(it.id)},
+                    e("span",{style:{flex:1,fontSize:11}},it.name),
+                    e("span",{className:"item-tag"},it.tags.size)
+                  ))
+                )
+              )
+
+        ) : e("div",{style:{color:"var(--text3)",fontSize:12,padding:"12px 0",lineHeight:1.7}},
+            "← Click a slot to configure its type and capacity")
+      ),
+
+      /* ── RIGHT: visual grid ── */
+      e("div",{className:"constr-canvas"},
+        e("div",{className:"sec-label",style:{marginBottom:6,flexShrink:0}},
+          "Furniture layout (rows = top to bottom · cells = left to right)"),
+        e("div",{className:"shelf-visual"},
+          grid.map((row,ri)=>e("div",{key:ri,className:"shelf-row-vis"},
+            e("div",{className:"row-handle"},
+              e("span",{className:"row-lbl"},"R"+(ri+1)),
+              grid.length>1&&e("button",{className:"icon-btn del",style:{fontSize:10,padding:"1px 3px"},onClick:()=>removeRow(ri)},"✕")
+            ),
+            row.map((cell,ci)=>{
+              const item=cell.itemId?ITEM_TYPES.find(x=>x.id===cell.itemId):null;
+              const stDef=SHELF_TYPES.find(s=>s.type===cell.shelfType)||SHELF_TYPES[0];
+              const isSel=sel&&sel.row===ri&&sel.col===ci;
+              return e("div",{key:cell.id,
+                className:"shelf-cell"+(isSel?" sel":""),
+                style:{flex:cell.flex,minHeight:52,
+                  background:highlightShelfDbId&&cell.shelfDbId===highlightShelfDbId?"#fbbf2430":
+                    isSel?"#6366f118":cell.itemId?"var(--accent)0a":cellBg[cell.shelfType]||"var(--surface)",
+                  borderColor:highlightShelfDbId&&cell.shelfDbId===highlightShelfDbId?"#fbbf24":
+                    isSel?"var(--accent)":cellBorder[cell.shelfType]||"var(--border)",
+                  boxShadow:highlightShelfDbId&&cell.shelfDbId===highlightShelfDbId?"0 0 0 2px #fbbf24":"none",
+                  transition:"all .3s"},
+                onClick:()=>setSel(isSel?null:{row:ri,col:ci})
+              },
+                e("span",{style:{fontSize:15,pointerEvents:"none"}},stDef.icon),
+                e("span",{style:{fontSize:8,color:"var(--text3)",fontFamily:"var(--mono)",pointerEvents:"none"}},cell.size),
+                item&&e("div",{className:"shelf-cell-item",style:{
+                  background:cell.shelfDbId?"#22c55e18":"var(--accent)15",
+                  borderLeft:"2px solid "+(cell.shelfDbId?"#22c55e":"var(--accent)"),
+                  display:"flex",justifyContent:"space-between",alignItems:"center",gap:4
+                }},
+                  e("span",null,(cell.shelfDbId?"📍 ":"📋 ")+(item.name.length>10?item.name.slice(0,8)+"…":item.name)),
+                  cell.itemCount>0&&e("span",{style:{
+                    background:"#22c55e",color:"white",borderRadius:"50%",
+                    width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:9,fontWeight:800,flexShrink:0
+                  }},cell.itemCount)
+                ),
+                e("span",{style:{fontSize:8,color:"var(--text3)",fontFamily:"var(--mono)",pointerEvents:"none"}},"×"+cell.flex),
+                row.length>1&&e("button",{
+                  className:"icon-btn del",
+                  style:{position:"absolute",top:2,right:2,fontSize:9,padding:"1px 3px",opacity:.4},
+                  onClick:ev=>{ev.stopPropagation();removeCol(ri,ci);}
+                },"✕")
+              );
+            }),
+            e("button",{className:"add-col-btn",onClick:()=>addCol(ri),title:"Add slot"},"+")
+          )),
+          e("button",{className:"add-row-btn",onClick:addRow},"+ Add shelf (row)")
+        )
+      )
+    )
+  );
+}
+
+/* ─── Add Furniture Modal ─── */
+function AddFurnModal({onClose,onAdd,roomType}){
+  const[tab,setTab]=useState("anchor");
+  const[selType,setSelType]=useState(null);
+  const[zv,setZv]=useState(0);
+
+  const groups=tab==="anchor"?ANCHOR_GROUPS:STORAGE_GROUPS;
+
+  // Show group if: universal, OR matches current room, OR roomType not set
+  function shouldShow(groupKey){
+    return groupKey==="universal"||!roomType||groupKey===roomType;
+  }
+
+  function confirm(){
+    if(!selType)return;
+    const def=furnDef(selType);
+    onAdd({id:uid(),type:selType,category:tab==="anchor"?"anchor":"storage",
+      x:80,y:80,z:zv,w:def.w,h:def.h,rotation:0,shelfGrid:null});
+    onClose();
+  }
+
+  return e(Modal,{title:"Add Furniture",onClose,onConfirm:selType?confirm:null,confirmLabel:"Add",size:"sm"},
+    // Tab switcher
+    e("div",{style:{display:"flex",gap:4,background:"var(--surface2)",padding:3,borderRadius:8,border:"1px solid var(--border)"}},
+      [["anchor","⚓ Anchors"],["storage","📦 Storage"]].map(([v,l])=>
+        e("button",{key:v,style:{flex:1,padding:"7px 0",borderRadius:6,border:"none",cursor:"pointer",
+          fontFamily:"var(--font)",fontSize:12,fontWeight:700,transition:"all .15s",
+          background:tab===v?"var(--accent)":"transparent",color:tab===v?"white":"var(--text2)"},
+          onClick:()=>{setTab(v);setSelType(null);}},l)
+      )
+    ),
+
+    // Groups + items
+    e("div",{style:{overflowY:"auto",maxHeight:"55vh",display:"flex",flexDirection:"column",gap:12}},
+      groups.map(grp=>{
+        if(!shouldShow(grp.key))return null;
+        return e("div",{key:grp.key},
+          // Group header
+          e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:6,
+            paddingBottom:5,borderBottom:"1.5px solid "+grp.color+"40"}},
+            e("span",{style:{fontSize:13,fontWeight:800,color:grp.color}},grp.label),
+            grp.key==="universal"&&e("span",{style:{fontSize:9,color:"var(--text3)",fontFamily:"var(--mono)",
+              background:"var(--surface3)",borderRadius:4,padding:"2px 5px"}},
+              tab==="anchor"?"proximity-independent":"all rooms")
+          ),
+          // Items grid
+          e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}},
+            grp.items.map(fd=>{
+              const isSel=selType===fd.type;
+              return e("button",{key:fd.type,
+                style:{padding:"8px 4px",borderRadius:7,cursor:"pointer",textAlign:"center",
+                  border:"1.5px solid "+(isSel?fd.color:"var(--border)"),
+                  background:isSel?fd.color+"22":"var(--surface2)",
+                  color:isSel?fd.color:"var(--text2)",
+                  fontSize:11,fontWeight:700,fontFamily:"var(--font)",transition:"all .15s",
+                  display:"flex",flexDirection:"column",alignItems:"center",gap:2},
+                onClick:()=>setSelType(isSel?null:fd.type)
+              },
+                e("span",{style:{fontSize:18,lineHeight:1}},fd.icon),
+                e("span",{style:{fontSize:9,lineHeight:1.2}},fd.label)
+              );
+            })
+          )
+        );
+      })
+    ),
+
+    // Z Level
+    e("div",null,
+      e("div",{className:"sec-label"},"Height Level"),
+      e("div",{className:"z-group"},
+        Z_LEVELS.map(z=>e("button",{key:z.v,className:"z-btn",
+          style:{borderColor:zv===z.v?z.color:"var(--border)",background:zv===z.v?z.color+"20":"var(--surface2)",color:zv===z.v?z.color:"var(--text2)"},
+          onClick:()=>setZv(z.v)},z.icon+" "+z.label))
+      )
+    )
+  );
+}
+
+/* ─── Add Room Modal ─── */
+function AddRoomModal({onClose,onAdd}){
+  const[type,setType]=useState("kitchen");
+  function confirm(){onAdd(type);onClose();}
+  return e(Modal,{title:"New Room",onClose,onConfirm:confirm,confirmLabel:"Add"},
+    e("div",{className:"type-wrap"},
+      ROOM_TYPES.map(t=>{const col=ROOM_COLORS[t]||"#94a3b8";return e("button",{key:t,className:"type-chip",style:{borderColor:type===t?col:"var(--border)",background:type===t?col+"18":"var(--surface2)",color:type===t?col:"var(--text2)"},onClick:()=>setType(t)},t);})
+    )
+  );
+}
+
+/* ─── Add Apt Modal ─── */
+function AddAptModal({onClose,onAdd}){
+  const[name,setName]=useState("");
+  function confirm(){if(name.trim()){onAdd(name.trim());onClose();}}
+  return e(Modal,{title:"New Apartment",onClose,onConfirm:confirm,confirmLabel:"Create"},
+    e("div",{className:"field"},e("label",null,"Name"),e("input",{className:"input",autoFocus:true,value:name,placeholder:"My Apartment",onChange:x=>setName(x.target.value),onKeyDown:x=>x.key==="Enter"&&confirm()}))
+  );
+}
+
+/* ─── Room Canvas ─── */
+function RoomCanvas({room,furniture,selId,onSelect,onUpdateFurn,onOpenConstructor,roomW,roomH,onResize,highlightFurnDbId,highlightShelfDbId}){
+  const canvasRef=useRef(null);
+  const drag=useRef(null);
+  const furnRef=useRef(furniture);
+  useEffect(()=>{furnRef.current=furniture;},[furniture]);
+  // Click-cycling through overlapping furniture (top -> bottom -> top ...)
+  const cycleRef=useRef({key:"",idx:0,ids:[]});
+
+  function pointInRoom(ev){
+    const canvas=canvasRef.current;
+    if(!canvas)return {x:ev.clientX,y:ev.clientY};
+    const rect=canvas.getBoundingClientRect();
+    return {
+      x:(ev.clientX-rect.left)+canvas.scrollLeft,
+      y:(ev.clientY-rect.top)+canvas.scrollTop
+    };
+  }
+
+  function getBBox(f){
+    const rot=f.rotation||0;
+    const dispW=(rot===90||rot===270)?f.h:f.w;
+    const dispH=(rot===90||rot===270)?f.w:f.h;
+    // x,y is now CENTER of furniture
+    return {l:f.x-dispW/2,t:f.y-dispH/2,r:f.x+dispW/2,b:f.y+dispH/2,dispW,dispH};
+  }
+
+  function hitsAtPoint(x,y){
+    const hits=furnRef.current.filter(f=>{
+      const bb=getBBox(f);
+      return x>=bb.l && x<=bb.r && y>=bb.t && y<=bb.b;
+    });
+    // Order similarly to zIndex in render (higher zIndex = "top")
+    hits.sort((a,b)=>{
+      const za=(a.z??0), zb=(b.z??0);
+      if(za!==zb) return zb-za; // top first
+      // fallback: later objects feel "on top"
+      return (furnRef.current.indexOf(b) - furnRef.current.indexOf(a));
+    });
+    return hits;
+  }
+
+
+  function onFurnMD(ev,fId){
+    ev.stopPropagation();
+    const p=pointInRoom(ev);
+    const hits=hitsAtPoint(p.x,p.y);
+    const clickedIds=hits.map(h=>h.localId);
+    let pickId=fId;
+
+    if(hits.length>1){
+      const key=`${Math.round(p.x)}_${Math.round(p.y)}_${clickedIds.join(",")}`;
+      if(cycleRef.current.key===key){
+        cycleRef.current.idx=(cycleRef.current.idx+1)%hits.length;
+      }else{
+        cycleRef.current.key=key;
+        // If current selection is under cursor, start cycling from it; else from top
+        const curIdx=hits.findIndex(h=>h.localId===selId);
+        cycleRef.current.idx=(curIdx>=0?(curIdx+1)%hits.length:0);
+      }
+      pickId=hits[cycleRef.current.idx].localId;
+      // force selection immediately so UI shows which one you're dragging
+      onSelect(pickId);
+    }
+
+    const f=furnRef.current.find(x=>x.localId===pickId);
+    if(!f)return;
+    drag.current={id:pickId,mx:ev.clientX,my:ev.clientY,fx:f.x,fy:f.y,moved:false};
+    window.addEventListener('mousemove',onMM);
+    window.addEventListener('mouseup',onMU);
+  }
+  function onMM(ev){
+    if(!drag.current)return;
+    const{id,mx,my,fx,fy}=drag.current;
+    const dx=ev.clientX-mx,dy=ev.clientY-my;
+    if(!drag.current.moved&&Math.abs(dx)<5&&Math.abs(dy)<5)return;
+    drag.current.moved=true;
+    const f=furnRef.current.find(x=>x.localId===id);
+    if(!f)return;
+    const rot=f.rotation||0;
+    const dispW=(rot===90||rot===270)?f.h:f.w;
+    const dispH=(rot===90||rot===270)?f.w:f.h;
+    // clamp by room size (roomW/roomH), not viewport rect
+    const nx=clamp(snap(fx+dx),dispW/2,Math.max(dispW/2,(roomW||800)-dispW/2));
+    const ny=clamp(snap(fy+dy),dispH/2,Math.max(dispH/2,(roomH||600)-dispH/2));
+    onUpdateFurn({...f,x:nx,y:ny});
+  }
+  function onMU(){
+    if(drag.current&&!drag.current.moved){onSelect(drag.current.id);}
+    drag.current=null;
+    window.removeEventListener('mousemove',onMM);
+    window.removeEventListener('mouseup',onMU);
+  }
+  function onCanvasMD(ev){if(ev.target===canvasRef.current||ev.target.className==='canvas-grid')onSelect(null);}
+  useEffect(()=>()=>{window.removeEventListener('mousemove',onMM);window.removeEventListener('mouseup',onMU);},[]);
+
+  // Resize drag
+  const resizeDrag=useRef(null);
+  function onResizeMD(ev){
+    ev.stopPropagation();
+    resizeDrag.current={mx:ev.clientX,my:ev.clientY,w:roomW,h:roomH};
+    window.addEventListener('mousemove',onRMM);window.addEventListener('mouseup',onRMU);
+  }
+  function onRMM(ev){
+    if(!resizeDrag.current)return;
+    const{mx,my,w,h}=resizeDrag.current;
+    onResize(Math.max(300,snap(w+ev.clientX-mx)),Math.max(200,snap(h+ev.clientY-my)));
+  }
+  function onRMU(){resizeDrag.current=null;window.removeEventListener('mousemove',onRMM);window.removeEventListener('mouseup',onRMU);}
+
+  const rc=ROOM_COLORS[room.type]||'#94a3b8';
+  return e('div',{id:'room-canvas',ref:canvasRef,onMouseDown:onCanvasMD,style:{position:'relative',flex:1,overflow:'auto',background:'var(--bg)'}},
+    e('div',{className:'canvas-grid',style:{position:'absolute',left:0,top:0,width:roomW,height:roomH,minWidth:'100%',minHeight:'100%'}}),
+    e('div',{style:{position:'absolute',left:0,top:0,width:roomW,height:roomH,border:'2px solid '+rc+'45',borderRadius:12,pointerEvents:'none',background:rc+'05',boxShadow:'inset 0 0 80px '+rc+'08'}}),
+    e('div',{style:{position:'absolute',top:8,left:12,fontSize:10,color:rc+'80',fontFamily:'var(--mono)',pointerEvents:'none'}},roomW+'×'+roomH),
+    e('div',{style:{position:'absolute',left:roomW-14,top:roomH-14,width:16,height:16,cursor:'se-resize',background:rc+'60',borderRadius:'4px 0 8px 0',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center'},onMouseDown:onResizeMD,title:'Resize room'},
+      e('span',{style:{fontSize:9,color:'white',pointerEvents:'none',lineHeight:1}},'⤡')),
+    furniture.map(f=>{
+      const def=furnDef(f.type);
+      const zInfo=Z_LEVELS.find(z=>z.v===(f.z??0));
+      const isSel=selId===f.localId;
+      const rot=f.rotation||0;
+      const dispW=(rot===90||rot===270)?f.h:f.w;
+      const dispH=(rot===90||rot===270)?f.w:f.h;
+      const isStorage=isFurnStorage(f);
+      let filled=0,total=0;
+      if(f.shelfGrid){f.shelfGrid.forEach(row=>{total+=row.length;row.forEach(c=>{if(c.itemId)filled++;});});}
+      return e("div",{key:f.localId,
+        className:"furn-node"+(isSel?" selected":""),
+        style:{left:f.x-dispW/2,top:f.y-dispH/2,width:dispW,height:dispH,
+          background:isStorage?def.color+"18":def.color+"0e",
+          borderColor:isSel?def.color:highlightFurnDbId&&f.dbId===highlightFurnDbId?"#fbbf24":isStorage?def.color+"55":def.color+"80",
+          borderStyle:isStorage?"solid":"dashed",
+          boxShadow:isSel?"0 0 0 3px "+def.color+"40,0 4px 20px "+def.color+"28":
+            highlightFurnDbId&&f.dbId===highlightFurnDbId?"0 0 0 5px #fbbf24,0 0 40px #fbbf2499,0 0 80px #fbbf2444":"0 2px 8px #0004",
+          zIndex: 10 + ((f.z??0) * 100) + (isSel ? 50 : 0) + (highlightFurnDbId&&f.dbId===highlightFurnDbId ? 200 : 0),
+          transition:"box-shadow .3s,border-color .3s",
+          animation:highlightFurnDbId&&f.dbId===highlightFurnDbId?"pulse-highlight 1s ease-in-out 3":"none",
+        },
+        onMouseDown:ev=>onFurnMD(ev,f.localId),
+        onDoubleClick:ev=>{ev.stopPropagation();if(isStorage)onOpenConstructor(f);}
+      },
+        /* Highlight banner — shown above furniture when item found here */
+        highlightFurnDbId&&f.dbId===highlightFurnDbId&&e("div",{style:{
+          position:"absolute",top:-28,left:"50%",transform:"translateX(-50%)",
+          background:"#fbbf24",color:"#1a1a1a",
+          padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:800,
+          whiteSpace:"nowrap",pointerEvents:"none",zIndex:20,
+          boxShadow:"0 2px 8px #0006",animation:"bounceIn .3s ease"
+        }},"📍 ITEM HERE"),
+        e("div",{style:{
+          display:"flex",flexDirection:"column",alignItems:"center",
+          justifyContent:"center",gap:2,pointerEvents:"none",width:"100%",height:"100%"
+        }},
+          e("span",{className:"furn-icon"},def.icon),
+          e("span",{className:"furn-label",style:{color:def.color}},def.label),
+          e("span",{style:{fontSize:9,color:zInfo.color,fontFamily:"var(--mono)"}},zInfo.icon)
+        ),
+        isStorage&&total>0&&e("span",{style:{position:"absolute",top:3,right:3,fontSize:8,fontFamily:"var(--mono)",background:def.color+"30",color:def.color,borderRadius:4,padding:"1px 4px"}},""+filled+"/"+total),
+        isStorage&&e("span",{style:{position:"absolute",top:3,left:3,fontSize:8,color:def.color+"80",fontFamily:"var(--mono)"}},"2x✎")
+      );
+    })
+  );
+}
+
+/* ─── Right Panel ─── */
+/* ─── NumInput: stable number input that only commits on blur/Enter ─── */
+function NumInput({value,onChange,min,max,style}){
+  const[raw,setRaw]=useState(String(value??0));
+  const[focused,setFocused]=useState(false);
+  // Sync from outside only when not focused
+  useEffect(()=>{ if(!focused) setRaw(String(value??0)); },[value,focused]);
+  function commit(str){
+    let n=parseFloat(str.replace(",","."));
+    if(isNaN(n)) n=value??0;
+    if(min!=null) n=Math.max(min,n);
+    if(max!=null) n=Math.min(max,n);
+    setRaw(String(n));
+    if(n!==value) onChange(n);
+  }
+  return e("input",{
+    className:"input",type:"text",inputMode:"numeric",
+    value:raw,
+    style:{padding:"7px 10px",fontSize:13,...(style||{})},
+    onFocus:()=>setFocused(true),
+    onChange:ev=>setRaw(ev.target.value),
+    onBlur:ev=>{setFocused(false);commit(ev.target.value);},
+    onKeyDown:ev=>{if(ev.key==="Enter")commit(ev.target.value);}
+  });
+}
+
+function daysUntil(dateStr){
+  if(!dateStr)return 999;
+  return Math.ceil((new Date(dateStr)-new Date())/(1000*60*60*24));
+}
+function RightPanel({furn,onChange,onDelete,onOpenConstructor,roomW,roomH}){
+  if(!furn)return e("div",{className:"right-panel"},
+    e("div",{className:"rp-head"},e("div",{className:"rp-title"},"Details")),
+    e("div",{className:"empty"},e("div",{className:"empty-icon"},"🪑"),e("div",{className:"empty-text"},"Select furniture"),e("div",{className:"empty-sub"},"Click to select · double-click to open constructor"))
+  );
+  const def=furnDef(furn.type);
+  const isStorage=isFurnStorage(furn);
+  let filled=0,total=0;
+  if(furn.shelfGrid){furn.shelfGrid.forEach(row=>{total+=row.length;row.forEach(c=>{if(c.itemId)filled++;});});}
+  return e("div",{className:"right-panel"},
+    e("div",{className:"rp-head"},
+      e("span",{style:{fontSize:20}},def.icon),
+      e("div",{className:"rp-title"},def.label),
+      e("button",{className:"icon-btn del",onClick:()=>onDelete(furn.localId)},"🗑")
+    ),
+    e("div",{className:"rp-body"},
+      /* ── All items in this furniture ── */
+      (()=>{
+        const allItems=[];
+        if(furn.shelfGrid){
+          furn.shelfGrid.forEach((row,ri)=>row.forEach((cell,ci)=>{
+            (cell.items||[]).forEach(it=>{
+              allItems.push({...it,row:ri+1,col:ci+1,shelfType:cell.shelfType});
+            });
+          }));
+        }
+        if(allItems.length===0) return null;
+        return e("div",{style:{marginBottom:12}},
+          e("div",{className:"sec-label"},"📦 ITEMS IN THIS FURNITURE"),
+          e("div",{style:{display:"flex",flexDirection:"column",gap:4,maxHeight:160,overflowY:"auto",
+            background:"var(--surface2)",borderRadius:8,padding:"8px 10px",
+            border:"1px solid var(--border)"}},
+            allItems.map((it,i)=>e("div",{key:i,style:{
+              display:"flex",justifyContent:"space-between",alignItems:"center",
+              fontSize:11,padding:"4px 0",
+              borderBottom: i<allItems.length-1?"1px solid var(--border)30":"none"
+            }},
+              e("div",null,
+                e("span",{style:{fontWeight:700,color:"var(--text1)"}},it.name||"?"),
+                e("span",{style:{fontSize:9,color:"var(--text3)",marginLeft:6}},
+                  `shelf ${it.row}-${it.col}`)
+              ),
+              it.expiry&&e("span",{style:{fontSize:10,color:daysUntil(it.expiry)<=0?"#ef4444":daysUntil(it.expiry)<=7?"#f59e0b":"var(--text3)"}},
+                "⏳ "+it.expiry)
+            ))
+          )
+        );
+      })(),
+      e("div",{className:"sec-label"},"Position (room-clamped)"),
+      e("div",{className:"form-row"},
+        e("div",{className:"num-field"},e("label",null,"X"),
+          e(NumInput,{value:furn.x,min:0,
+            max:(roomW||800)-((furn.rotation===90||furn.rotation===270)?furn.h:furn.w)/2,
+            onChange:v=>onChange({...furn,x:snap(v)})})),
+        e("div",{className:"num-field"},e("label",null,"Y"),
+          e(NumInput,{value:furn.y,min:0,
+            max:(roomH||600)-((furn.rotation===90||furn.rotation===270)?furn.w:furn.h)/2,
+            onChange:v=>onChange({...furn,y:snap(v)})}))
+      ),
+      e("div",null,
+        e("div",{className:"sec-label"},"Dimensions (px)"),
+        e("div",{className:"form-row"},
+          e("div",{className:"num-field"},e("label",null,"Width"),e(NumInput,{value:furn.w,min:40,onChange:v=>onChange({...furn,w:v})})),
+          e("div",{className:"num-field"},e("label",null,"Height"),e(NumInput,{value:furn.h,min:40,onChange:v=>onChange({...furn,h:v})}))
+        )
+      ),
+      e("div",null,
+        e("div",{className:"sec-label"},"Height Level"),
+        e("div",{className:"z-group"},Z_LEVELS.map(z=>e("button",{key:z.v,className:"z-btn",style:{borderColor:furn.z===z.v?z.color:"var(--border)",background:furn.z===z.v?z.color+"20":"var(--surface2)",color:furn.z===z.v?z.color:"var(--text2)"},onClick:()=>onChange({...furn,z:z.v})},z.icon+" "+z.label)))
+      ),
+      e("div",null,
+        e("div",{className:"sec-label"},"Rotation"),
+        e("div",{className:"rot-group"},[0,90,180,270].map(r=>e("button",{key:r,className:"rot-btn"+(furn.rotation===r?" on":""),onClick:()=>onChange({...furn,rotation:r})},r+"°")))
+      ),
+      e("div",{className:"sep"}),
+      isStorage&&e("div",null,
+        e("div",{className:"sec-label"},"Shelf Constructor"),
+        total>0&&e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:6}},""+filled+" / "+total+" slots filled"),
+        e("button",{className:"open-constructor-btn",onClick:()=>onOpenConstructor(furn)},"✎ Open Shelf Constructor")
+      )
+    )
+  );
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   ITEM PLACEMENT SYSTEM
+═══════════════════════════════════════════════════════════ */
+
+/* ─── Fuzzy search for item types ─── */
+function lev(a,b){
+  const m=a.length,n=b.length;
+  if(Math.abs(m-n)>3)return 99;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i||j));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+function searchItemTypes(query){
+  if(!query||query.length<1)return[];
+  const words=query.toLowerCase().split(/\s+/).filter(w=>w.length>=2);
+  if(!words.length)return[];
+
+  const scored=ITEM_TYPES.map(it=>{
+    const nameParts=it.name.toLowerCase().split(" ");
+    const type=(it.tags.type||"").toLowerCase();
+    let score=0;
+    for(const w of words){
+      const nameStr=it.name.toLowerCase();
+      if(nameStr.includes(w))                score+=10; // exact substring
+      else if(nameParts.some(p=>p.startsWith(w))) score+=6; // word-start
+      else{
+        // Fuzzy: levenshtein against each word in name
+        const minDist=Math.min(...nameParts.map(p=>lev(w,p)));
+        if(minDist<=1&&w.length>=4)          score+=5; // 1 typo
+        else if(minDist<=2&&w.length>=5)     score+=2; // 2 typos
+      }
+      if(type.includes(w))                   score+=3;
+    }
+    return {it,score};
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+
+  return scored.slice(0,8).map(x=>x.it);
+}
+
+/* ─── Gemini match: викликає Edge Function яка використовує Gemini API ─── */
+async function geminiMatchItem(userText){
+  // Layer 1: try Edge Function (Gemini AI — handles typos, other languages, descriptions)
+  try{
+    const tok = await sb.validToken();
+    const res = await fetch(SB_URL+"/functions/v1/match-item",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"x-user-token":tok||""},
+      body:JSON.stringify({query:userText})
+    });
+    const d = await res.json();
+    if(!res.ok){
+      // Show specific error to help debug
+      const code=d.code||"";
+      if(code==="NO_KEY") console.warn("⚠️ Gemini: GEMINI_API_KEY не встановлений в Supabase Secrets");
+      else if(code==="NO_ITEMS") console.warn("⚠️ Gemini: таблиця items порожня — запусти seed_items.sql");
+      else if(code==="GEMINI_ERROR") console.warn("⚠️ Gemini API помилка:", d.error);
+      else console.warn("⚠️ match-item 500:", d.error);
+      throw new Error(d.code||d.error||"500");
+    }
+    if(d.ids && d.ids.length>0){
+      const mapped=d.ids.map(id=>ITEM_TYPES.find(it=>it.id===id)).filter(Boolean);
+      console.log("✨ Gemini IDs:", d.ids, "| знайдено тегів:", mapped.length, "| теги:", mapped.map(x=>x.name));
+      if(mapped.length>0) return {results:mapped, source:"gemini"};
+      console.warn("✨ Gemini IDs не співпали з жодним типом в БД:", d.ids);
+    } else {
+      console.log("✨ Gemini повернув порожній масив []");
+    }
+  }catch(ex){
+    console.warn("Gemini Edge Function failed, using local search:", ex.message);
+  }
+  // Layer 2: local fuzzy search (always works, no network needed)
+  const local = searchItemTypes(userText);
+  return {results:local, source:"local"};
+}
+
+/* ─── AddItemModal: Gemini розпізнавання → вибір → дати → пошук місця або вручну ─── */
+function AddItemModal({onClose,aptId,onItemPlaced}){
+  const[step,setStep]=useState("search"); // search | found | auto_results | manual
+  const[itemName,setItemName]=useState("");   // USER's own name for the item (stays forever)
+  const[matches,setMatches]=useState([]);
+  const[selType,setSelType]=useState(null);   // catalog TAG selected by user
+  const[expiryEnabled,setExpiryEnabled]=useState(false);
+  const[warrantyEnabled,setWarrantyEnabled]=useState(false);
+  const[expiryDate,setExpiryDate]=useState("");
+  const[warrantyDate,setWarrantyDate]=useState("");
+  const[note,setNote]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[geminiLoading,setGeminiLoading]=useState(false);
+  const[recommendations,setRecommendations]=useState([]);
+  const[error,setError]=useState(null);
+
+  // Live local fuzzy search while typing (instant, no network)
+  function onNameChange(val){
+    setItemName(val);
+    const local=val.length>=1?searchItemTypes(val):[];
+    setMatches(local);
+    setSearchSource(local.length>0?"local":null);
+  }
+
+  const[searchSource,setSearchSource]=useState(null); // "gemini" | "local" | null
+  async function handleSearch(){
+    if(!itemName||itemName.length<1)return;
+    setGeminiLoading(true);setError(null);
+    const {results, source} = await geminiMatchItem(itemName);
+    setMatches(results||[]);
+    setSearchSource(source||null);
+    setGeminiLoading(false);
+    if(!results || results.length===0){
+      setError(null); // no error — just show "browse manually" hint
+    }
+  }
+
+  async function findAutoPlace(){
+    setLoading(true);setError(null);
+    try{
+      const tok=await sb.validToken();
+      const res=await fetch(SB_URL+"/functions/v1/find-shelf",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"x-user-token":tok},
+        body:JSON.stringify({item_type_id:selType?.id||null,apartment_id:aptId})
+      });
+      const d=await res.json();
+      if(!res.ok)throw new Error(d.error||"Search error");
+
+      setRecommendations(d.recommendations||[]);
+      setStep("auto_results");
+    }catch(ex){setError(ex.message);}
+    setLoading(false);
+  }
+
+  async function placeOnShelf(shelfId){
+    setLoading(true);setError(null);
+    try{
+      const tok=await sb.validToken();
+      const res=await fetch(SB_URL+"/functions/v1/place-item",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"x-user-token":tok},
+        body:JSON.stringify({
+          item_type_id:selType.id,
+          shelf_id:shelfId,
+          item_name:itemName||null,
+          expiry_date:expiryEnabled&&expiryDate?expiryDate:null,
+          warranty_date:warrantyEnabled&&warrantyDate?warrantyDate:null,
+          note:note||null
+        })
+      });
+      const d=await res.json();
+      if(!res.ok)throw new Error(d.error||d.code||"Placement error");
+      // Use furniture_id from server response (most reliable)
+      const furnDbId=d.furniture_id||recommendations.find(r=>r.shelf.id===shelfId)?.furniture?.id||null;
+      onItemPlaced&&onItemPlaced({shelfDbId:shelfId,furnDbId,itemType:selType,itemName,expiryDate:(expiryEnabled?expiryDate:null),warrantyDate:(warrantyEnabled?warrantyDate:null)});
+      onClose();
+    }catch(ex){setError(ex.message);}
+    setLoading(false);
+  }
+
+  const LEVEL_LABELS={0:"👟 Floor",1:"🧥 Waist",2:"🎩 Head"};
+  const SHELF_ICONS={shelf:"▬",drawer:"▭",hanger:"🪝",container:"📦",surface:"⬜",compartment:"🔲",rack:"🏗",hidden:"👁"};
+  const ROOM_ICONS={kitchen:"🍳",bathroom:"🚿",bedroom:"🛏",living_room:"🛋",hallway:"🚪",office:"💻",storage:"📦"};
+
+  return e(Modal,{title:"➕ Add Item",onClose,size:"md"},
+    error&&e("div",{style:{background:"#fee2e2",color:"#dc2626",padding:"8px 12px",borderRadius:6,fontSize:12,marginBottom:8}},error),
+
+    /* ── STEP: search ── */
+    step==="search"&&e("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+
+      /* ── Назва предмета (власна, незмінна) ── */
+      e("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+        e("label",{style:{fontSize:11,fontWeight:700,color:"var(--text3)",letterSpacing:.5}},
+          "YOUR ITEM NAME"),
+        e("div",{style:{display:"flex",gap:8}},
+          e("input",{
+            placeholder:"E.g. «Grandma's pot», «Green shampoo»...",
+            value:itemName, autoFocus:true,
+            style:{flex:1,padding:"10px 12px",borderRadius:8,
+              border:"2px solid var(--accent)",
+              background:"var(--surface2)",color:"var(--text1)",
+              fontFamily:"var(--font)",fontSize:14,fontWeight:600},
+            onChange:ev=>onNameChange(ev.target.value),
+            onKeyDown:ev=>ev.key==="Enter"&&handleSearch()
+          }),
+          e("button",{
+            onClick:handleSearch,
+            disabled:geminiLoading||itemName.length<1,
+            title:"Gemini will suggest a category",
+            style:{padding:"10px 14px",borderRadius:8,border:"none",cursor:"pointer",
+              background:"var(--accent)",color:"white",fontSize:16}
+          }, geminiLoading
+            ?e("span",{style:{animation:"spin 1s linear infinite",display:"inline-block"}},"⟳")
+            :"✨")
+        ),
+        e("div",{style:{fontSize:10,color:"var(--text3)"}},
+          "This is your name — it will be saved as-is.")
+      ),
+
+      /* ── Підказки категорій від Gemini (теги) ── */
+      (matches.length>0||geminiLoading)&&e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        e("div",{style:{fontSize:11,fontWeight:700,color:"var(--text3)",letterSpacing:.5,display:"flex",justifyContent:"space-between"}},
+          "SIMILAR CATEGORIES",
+          searchSource==="gemini"
+            ?e("span",{style:{color:"#a78bfa",fontWeight:600}},"✨ Gemini")
+            :e("span",{style:{color:"var(--text3)",fontWeight:400}},"🔍 local search")
+        ),
+        geminiLoading&&e("div",{style:{color:"var(--text3)",fontSize:12,padding:"8px 0"}},"✨ Gemini analyzing..."),
+        !geminiLoading&&e("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+          matches.map(it=>{
+            const isGemini=searchSource==="gemini";
+            const isSel=selType?.id===it.id;
+            return e("button",{key:it.id,
+              onClick:()=>setSelType(isSel?null:it),
+              style:{
+                padding:"6px 12px",borderRadius:20,cursor:"pointer",
+                fontFamily:"var(--font)",fontSize:12,fontWeight:600,
+                border:"2px solid "+(isSel?"var(--accent)":isGemini?"#a78bfa66":"var(--border)"),
+                background:isSel?"var(--accent)":isGemini?"#a78bfa12":"var(--surface2)",
+                color:isSel?"white":isGemini?"#c4b5fd":"var(--text2)",
+                boxShadow:isGemini&&!isSel?"0 0 8px #a78bfa30":"none",
+                transition:"all .15s",display:"flex",alignItems:"center",gap:5
+              }
+            },
+              e("span",null,isGemini?"✨":"🔍"),
+              e("span",null,ROOM_ICONS[it.tags.room]||"📦"),
+              e("span",null,it.name),
+              isSel&&e("span",null,"✓")
+            );
+          })
+        )
+      ),
+      /* ── Якщо Gemini/пошук не знайшли — вибір категорії вручну (ОБОВʼЯЗКОВО) ── */
+      itemName.length>=1&&matches.length===0&&!geminiLoading&&e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        e("div",{style:{fontSize:11,fontWeight:700,color:"var(--text3)",letterSpacing:.5}},
+          "NO CATEGORY FOUND — SELECT MANUALLY (ITEM CANNOT EXIST WITHOUT A TAG)"),
+        e("div",{style:{display:"flex",flexWrap:"wrap",gap:6,maxHeight:160,overflow:"auto",padding:6,
+          border:"1px solid var(--border)",borderRadius:8,background:"var(--surface2)"}},
+          // show first 60 options to pick from (you can refine by typing a clearer name)
+          ITEM_TYPES.slice(0,60).map(it=>e("button",{key:it.id,
+            onClick:()=>setSelType(it),
+            style:{padding:"6px 10px",borderRadius:18,cursor:"pointer",
+              fontFamily:"var(--font)",fontSize:12,fontWeight:600,
+              border:"2px solid "+(selType?.id===it.id?"var(--accent)":"var(--border)"),
+              background:selType?.id===it.id?"var(--accent)":"var(--surface3)",
+              color:selType?.id===it.id?"white":"var(--text2)",
+              transition:"all .15s",display:"flex",alignItems:"center",gap:6}
+          },
+            e("span",null,ROOM_ICONS[it.tags.room]||"📦"),
+            e("span",null,it.name),
+            selType?.id===it.id&&e("span",null,"✓")
+          ))
+        ),
+        e("div",{style:{fontSize:10,color:"var(--text3)"}},
+          "Tip: enter a more specific name — relevant categories will appear at the top.")
+      ),
+
+      /* ── Кнопка далі ── */
+      itemName.length>=1&&e("button",{
+        onClick:()=>{
+          if(!selType){setError("No tag found/selected. Choose a category manually — an item cannot exist without a tag.");return;}
+          setStep("found");
+        },
+        disabled:!selType,
+        style:{padding:"11px",borderRadius:9,border:"none",
+          cursor:selType?"pointer":"not-allowed",
+          opacity:selType?1:0.55,
+          background:"var(--accent)",color:"white",fontFamily:"var(--font)",
+          fontWeight:700,fontSize:14,marginTop:4}
+      }, selType?`Next — "${itemName}" (${selType.name}) →`:"Select a category (required) →")
+    ),
+
+    /* ── STEP: found — selected item + options ── */
+    step==="found"&&selType&&e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      /* Item name card — user's own name is primary */
+      e("div",{style:{padding:"12px 16px",background:"var(--surface2)",borderRadius:10,
+        border:"2px solid var(--accent)",display:"flex",flexDirection:"column",gap:6}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+          e("span",{style:{fontSize:26}},selType?ROOM_ICONS[selType.tags.room]||"📦":"📦"),
+          e("div",{style:{flex:1}},
+            e("div",{style:{fontWeight:800,fontSize:16}},itemName||"(no name)"),
+            selType
+              ?e("div",{style:{marginTop:4,display:"flex",alignItems:"center",gap:6}},
+                  e("span",{style:{fontSize:10,background:"var(--accent)20",color:"var(--accent)",
+                    borderRadius:12,padding:"2px 8px",fontWeight:700}},"🏷 "+selType.name),
+                  e("span",{style:{fontSize:10,color:"var(--text3)"}},
+                    `${selType.tags.size} • ${selType.tags.room} • ${selType.tags.type}`)
+                )
+              :e("div",{style:{fontSize:11,color:"#f59e0b",marginTop:2}},
+                  "⚠️ No category selected — placement search less accurate")
+          ),
+          e("button",{
+            style:{fontSize:11,color:"var(--text3)",cursor:"pointer",background:"none",
+              border:"1px solid var(--border)",borderRadius:6,padding:"4px 8px",flexShrink:0},
+            onClick:()=>{setStep("search");}
+          },"← back")
+        )
+      ),
+
+      // Divider
+      e("div",{style:{fontSize:11,color:"var(--text3)",fontWeight:700,letterSpacing:1}},
+        "ADDITIONAL PARAMETERS"),
+
+      // Expiry date
+      e("div",{style:{background:"var(--surface2)",borderRadius:8,padding:"10px 12px",
+        display:"flex",flexDirection:"column",gap:8}},
+        e("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13}},
+          e("input",{type:"checkbox",checked:expiryEnabled,
+            style:{width:16,height:16,cursor:"pointer",accentColor:"var(--accent)"},
+            onChange:ev=>setExpiryEnabled(ev.target.checked)}),
+          e("span",null,"📅 Expiry date"),
+          expiryEnabled&&e("span",{style:{fontSize:10,color:"#f59e0b",marginLeft:"auto"}},
+            expiryDate?`${daysUntil(expiryDate)} days left`:"pick a date")
+        ),
+        expiryEnabled&&e("input",{type:"date",value:expiryDate,min:new Date().toISOString().split("T")[0],
+          style:{padding:"8px 10px",borderRadius:7,border:"1px solid var(--border)",
+            background:"var(--surface3)",color:"var(--text1)",fontFamily:"var(--font)",fontSize:13},
+          onChange:ev=>setExpiryDate(ev.target.value)})
+      ),
+
+      // Warranty
+      e("div",{style:{background:"var(--surface2)",borderRadius:8,padding:"10px 12px",
+        display:"flex",flexDirection:"column",gap:8}},
+        e("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13}},
+          e("input",{type:"checkbox",checked:warrantyEnabled,
+            style:{width:16,height:16,cursor:"pointer",accentColor:"var(--accent)"},
+            onChange:ev=>setWarrantyEnabled(ev.target.checked)}),
+          e("span",null,"🛡 Warranty"),
+          warrantyEnabled&&e("span",{style:{fontSize:10,color:"#60a5fa",marginLeft:"auto"}},
+            warrantyDate?`until ${warrantyDate}`:"pick a date")
+        ),
+        warrantyEnabled&&e("input",{type:"date",value:warrantyDate,min:new Date().toISOString().split("T")[0],
+          style:{padding:"8px 10px",borderRadius:7,border:"1px solid var(--border)",
+            background:"var(--surface3)",color:"var(--text1)",fontFamily:"var(--font)",fontSize:13},
+          onChange:ev=>setWarrantyDate(ev.target.value)})
+      ),
+
+      // Note
+      e("input",{placeholder:"✏️ Note (optional, e.g. «bought at IKEA»)",value:note,
+        style:{padding:"9px 12px",borderRadius:8,border:"1px solid var(--border)",
+          background:"var(--surface2)",color:"var(--text1)",fontFamily:"var(--font)",fontSize:13},
+        onChange:ev=>setNote(ev.target.value)}),
+
+      // Action buttons
+      e("div",{style:{display:"flex",gap:8}},
+        e("button",{
+          style:{flex:1,padding:"12px",borderRadius:9,border:"none",cursor:"pointer",
+            background:"var(--accent)",color:"white",fontFamily:"var(--font)",fontWeight:700,fontSize:14},
+          onClick:findAutoPlace,disabled:loading},
+          loading?"⏳ Analyzing apartment...":"🔍 Find spot (auto)"
+        ),
+        e("button",{
+          style:{flex:0,padding:"12px 16px",borderRadius:9,border:"1px solid var(--border)",cursor:"pointer",
+            background:"var(--surface2)",color:"var(--text2)",fontFamily:"var(--font)",fontWeight:700,fontSize:14},
+          onClick:()=>setStep("manual")},"🖱")
+      )
+    ),
+
+    /* ── STEP: auto_results ── */
+    step==="auto_results"&&e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+      e("div",{style:{fontWeight:700,fontSize:13,marginBottom:4}},
+        recommendations.length
+          ?(()=>{
+            const sameCount=recommendations.filter(r=>r.has_same_type).length;
+            if(sameCount>0) return `📦 Found ${sameCount} shelf(ves) with this type + ${recommendations.length-sameCount} new spots:`;
+            return `🏆 Top ${recommendations.length} spots for "${selType.name}":`;
+          })()
+          :"😔 No suitable spots found"
+      ),
+      (()=>{
+        // Sort: same-type shelves first, then by score
+        const sorted=[...recommendations].sort((a,b)=>{
+          if(a.has_same_type&&!b.has_same_type) return -1;
+          if(!a.has_same_type&&b.has_same_type) return 1;
+          return b.score-a.score;
+        });
+        return sorted.map((rec,i)=>{
+          const isSameType=rec.has_same_type;
+          const scoreColor=rec.score>=150?"#22c55e":rec.score>=120?"#f59e0b":"#94a3b8";
+          const furnLabel=furnDef(rec.furniture.type)?.label||rec.furniture.type;
+          return e("button",{key:i,
+            style:{
+              padding:"12px 14px",borderRadius:9,textAlign:"left",
+              width:"100%",fontFamily:"var(--font)",transition:"all .15s",
+              cursor:"pointer",
+              border: isSameType ? "2px solid #22c55e" : i===0 ? "2px solid var(--accent)" : "2px solid var(--border)",
+              background: isSameType ? "#22c55e12" : i===0 ? "var(--accent)0a" : "var(--surface2)",
+              boxShadow: isSameType ? "0 0 0 1px #22c55e30, 0 2px 12px #22c55e18" : "none",
+            },
+            onClick:()=>placeOnShelf(rec.shelf.id),
+            disabled:loading
+          },
+            isSameType&&e("div",{style:{
+              display:"flex",alignItems:"center",gap:5,
+              marginBottom:6,
+              fontSize:11,fontWeight:700,color:"#22c55e",
+              background:"#22c55e18",borderRadius:5,padding:"3px 8px",
+              width:"fit-content"
+            }},
+              "📦 Already has this type · "+rec.existing_count+" pcs"
+            ),
+            e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},
+              e("span",{style:{fontWeight:700,fontSize:13}},
+                `${SHELF_ICONS[rec.shelf.shelf_type]||"▬"} ${furnLabel} — ${LEVEL_LABELS[rec.furniture.z??rec.shelf.level]||"?"}`
+              ),
+              e("span",{style:{fontWeight:800,fontSize:15,color:isSameType?"#22c55e":scoreColor}},
+                isSameType?"🟢":Math.round(rec.score))
+            ),
+            e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+              rec.reasons.slice(0,4).map((r,ri)=>e("span",{key:ri,
+                style:{fontSize:10,padding:"2px 6px",borderRadius:4,
+                  background:r.startsWith("✅")?"#22c55e18":r.startsWith("⚠️")?"#f59e0b18":"#ef444418",
+                  color:r.startsWith("✅")?"#22c55e":r.startsWith("⚠️")?"#f59e0b":"#ef4444"
+                }},r))
+            )
+          );
+        });
+      })(),
+      loading&&e("div",{style:{textAlign:"center",color:"var(--text3)",padding:12}},"⏳ Placing..."),
+      e("div",{style:{display:"flex",gap:8,marginTop:4}},
+        e("button",{
+          style:{padding:"8px 14px",borderRadius:7,border:"1px solid var(--border)",cursor:"pointer",
+            background:"var(--surface2)",color:"var(--text2)",fontFamily:"var(--font)",fontSize:12},
+          onClick:()=>setStep("found")},"← Back"),
+        e("button",{
+          style:{padding:"8px 14px",borderRadius:7,border:"1px solid var(--border)",cursor:"pointer",
+            background:"var(--surface2)",color:"var(--text2)",fontFamily:"var(--font)",fontSize:12},
+          onClick:()=>setStep("manual")},"🖱 Choose manually")
+      )
+    ),
+
+    /* ── STEP: manual ── */
+    step==="manual"&&e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      e("div",{style:{padding:"14px",background:"var(--surface2)",borderRadius:10,
+        fontSize:13,color:"var(--text2)",lineHeight:1.7}},
+        e("div",{style:{fontWeight:700,marginBottom:6}},`📦 Placing "${selType?.name||"item"}"`),
+        "1. Close this window\n",
+        "2. Go to the right room\n",
+        "3. Click on the furniture\n",
+        "4. Click on the desired shelf\n",
+        "5. The selected shelf will highlight — click \"Place here\""
+      ),
+      e("button",{
+        style:{padding:"12px",borderRadius:9,border:"none",cursor:"pointer",
+          background:"var(--accent)",color:"white",fontFamily:"var(--font)",fontWeight:700,fontSize:14},
+        onClick:onClose},"Got it →")
+    )
+  );
+}
+
+/* ─── SearchBar ─── */
+function SearchBar({aptId,onHighlight}){
+  const[q,setQ]=useState("");
+  const[results,setResults]=useState(null);
+  const[loading,setLoading]=useState(false);
+  const[open,setOpen]=useState(false);
+
+  async function doSearch(){
+    if(!q||q.length<2)return;
+    setLoading(true);
+    try{
+      const tok=await sb.validToken();
+      const res=await fetch(SB_URL+"/functions/v1/search-item",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"x-user-token":tok},
+        body:JSON.stringify({query:q,apartment_id:aptId})
+      });
+      const d=await res.json();
+      setResults(d.results||[]);setOpen(true);
+    }catch(ex){setResults([]);}
+    setLoading(false);
+  }
+
+  const ROOM_LABELS={kitchen:"🍳 Kitchen",bathroom:"🚿 Bathroom",bedroom:"🛏 Bedroom",living_room:"🛋 Living Room",hallway:"🚪 Hallway",office:"💻 Office",storage:"📦 Storage"};
+
+  return e("div",{style:{position:"relative",flex:1}},
+    e("div",{style:{display:"flex",gap:6}},
+      e("input",{
+        placeholder:"🔍 Find item...",value:q,
+        style:{flex:1,padding:"7px 12px",borderRadius:8,border:"1px solid var(--border)",
+          background:"var(--surface2)",color:"var(--text1)",fontFamily:"var(--font)",fontSize:13},
+        onChange:ev=>setQ(ev.target.value),
+        onKeyDown:ev=>ev.key==="Enter"&&doSearch()
+      }),
+      e("button",{className:"btn sm",onClick:doSearch,disabled:loading},loading?"...":"Search")
+    ),
+    open&&results&&e("div",{style:{
+      position:"absolute",top:"100%",left:0,right:0,marginTop:4,
+      background:"var(--surface1)",border:"1px solid var(--border)",
+      borderRadius:10,boxShadow:"0 8px 32px rgba(0,0,0,.3)",zIndex:200,
+      maxHeight:320,overflowY:"auto"
+    }},
+      e("div",{style:{display:"flex",justifyContent:"space-between",padding:"8px 12px",
+        borderBottom:"1px solid var(--border)"}},
+        e("span",{style:{fontSize:12,color:"var(--text3)"}},`Found: ${results.length}`),
+        e("button",{style:{fontSize:11,cursor:"pointer",background:"none",border:"none",color:"var(--text3)"},
+          onClick:()=>setOpen(false)},"✕")
+      ),
+      results.length===0&&e("div",{style:{padding:16,textAlign:"center",fontSize:13,color:"var(--text3)"}},
+        "Nothing found"),
+      results.map((r,i)=>e("div",{key:i,
+        style:{padding:"10px 12px",borderBottom:"1px solid var(--border)",cursor:"pointer",
+          background:"transparent"},
+        onClick:()=>{onHighlight&&onHighlight(r);setOpen(false);}
+      },
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+          e("div",{style:{display:"flex",flexDirection:"column",gap:2}},
+            e("span",{style:{fontWeight:700,fontSize:13}},
+              r.item_name||r.item_type?.name||"?"),
+            r.item_name&&r.item_type&&e("span",{style:{fontSize:10,color:"var(--text3)"}},
+              "🏷 "+r.item_type.name)
+          ),
+          r.placed
+            ?e("span",{style:{fontSize:10,color:"#22c55e",background:"#22c55e18",
+                borderRadius:4,padding:"2px 6px",flexShrink:0}},"✓ placed")
+            :e("span",{style:{fontSize:10,color:"var(--text3)",background:"var(--surface2)",
+                borderRadius:4,padding:"2px 6px",flexShrink:0}},"not placed")
+        ),
+        r.location&&e("div",{style:{fontSize:11,color:"var(--text3)",marginTop:2}},
+          `${ROOM_LABELS[r.location.room_type]||r.location.room_type} → ${r.location.furniture_type}`),
+        r.expiry_date&&e("div",{style:{fontSize:10,marginTop:2,
+          color:daysUntil(r.expiry_date)<=2?"#ef4444":"#f59e0b"}},
+          `📅 until ${r.expiry_date}${daysUntil(r.expiry_date)<=0?" ❗EXPIRED":daysUntil(r.expiry_date)<=7?" ⚠️ soon":""}`
+        )
+      ))
+    )
+  );
+}
+
+
+/* ─── NotificationBanner — two separate panels: food expiry + warranty ─── */
+function NotificationBanner({userId}){
+  const STORE_EXPIRY="apt_dismissed_expiry";
+  const STORE_WARRANTY="apt_dismissed_warranty";
+
+  // Load dismissed IDs from localStorage — persists across sessions
+  const loadDismissed=key=>{
+    try{return new Set(JSON.parse(localStorage.getItem(key)||"[]"));}
+    catch{return new Set();}
+  };
+  const saveDismissed=(key,set)=>{
+    try{localStorage.setItem(key,JSON.stringify([...set]));}catch{}
+  };
+
+  const[expiryItems,setExpiryItems]=useState([]);
+  const[warrantyItems,setWarrantyItems]=useState([]);
+  const[dismissedExpiry,setDismissedExpiry]=useState(()=>loadDismissed(STORE_EXPIRY));
+  const[dismissedWarranty,setDismissedWarranty]=useState(()=>loadDismissed(STORE_WARRANTY));
+
+  useEffect(()=>{
+    if(!userId)return;
+    sb.q("user_items?user_id=eq."+userId+"&expiry_date=not.is.null&select=id,expiry_date,item_name,item_type_id,items:item_type_id(name)")
+      .then(data=>{
+        if(!data)return;
+        setExpiryItems(data.filter(d=>daysUntil(d.expiry_date)<=30));
+      }).catch(()=>{});
+    sb.q("user_items?user_id=eq."+userId+"&warranty_date=not.is.null&select=id,warranty_date,item_name,item_type_id,items:item_type_id(name)")
+      .then(data=>{
+        if(!data)return;
+        setWarrantyItems(data.filter(d=>daysUntil(d.warranty_date)<=30));
+      }).catch(()=>{});
+  },[userId]);
+
+  // Dismiss all currently visible item IDs for this banner type
+  const dismissAll=(items,storeKey,setter)=>{
+    const newSet=new Set(items.map(a=>a.id));
+    saveDismissed(storeKey,newSet);
+    setter(newSet);
+  };
+
+  // Only show items that haven't been dismissed
+  const visible=(items,dismissed)=>items.filter(a=>!dismissed.has(a.id));
+
+  const expiredFood=visible(expiryItems.filter(a=>daysUntil(a.expiry_date)<=0), dismissedExpiry);
+  const soonFood=visible(expiryItems.filter(a=>daysUntil(a.expiry_date)>0), dismissedExpiry);
+  const expiredWarranty=visible(warrantyItems.filter(a=>daysUntil(a.warranty_date)<=0), dismissedWarranty);
+  const soonWarranty=visible(warrantyItems.filter(a=>daysUntil(a.warranty_date)>0), dismissedWarranty);
+
+  const itemLabel=a=>a.item_name||(a.items?.name)||"?";
+
+  const BannerPanel=({allItems,onDismiss,color,borderColor,titleColor,icon,title,expired,soon,dateKey})=>{
+    if(!expired.length&&!soon.length)return null;
+    return e("div",{style:{
+      padding:"12px 16px",borderRadius:10,marginBottom:8,
+      background:color,border:"1.5px solid "+borderColor,
+      fontSize:13,display:"flex",flexDirection:"column",gap:6
+    }},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}},
+        e("div",{style:{display:"flex",flexDirection:"column",gap:4,flex:1}},
+          e("div",{style:{fontWeight:800,fontSize:12,color:titleColor,letterSpacing:.5}},icon+" "+title),
+          expired.length>0&&e("div",{style:{fontWeight:700,color:"#dc2626",fontSize:13}},
+            "❗ Expired: "+expired.map(itemLabel).join(", ")
+          ),
+          soon.length>0&&e("div",{style:{color:"#92400e",fontSize:12}},
+            "⏳ "+soon.map(a=>{
+              const d=daysUntil(a[dateKey]);
+              return itemLabel(a)+(d<=7?` (${d}d ⚠️)`:` (${d}d)`);
+            }).join(" · ")
+          )
+        ),
+        e("button",{
+          onClick:onDismiss,
+          title:"Dismiss — won't show again until new items appear",
+          style:{background:"none",border:"1px solid "+borderColor,borderRadius:6,
+            padding:"3px 10px",fontSize:11,fontWeight:700,cursor:"pointer",
+            color:titleColor,flexShrink:0,alignSelf:"flex-start"}
+        },"OK ✓")
+      )
+    );
+  };
+
+  return e("div",null,
+    e(BannerPanel,{
+      allItems:expiryItems,
+      onDismiss:()=>dismissAll([...expiredFood,...soonFood],STORE_EXPIRY,setDismissedExpiry),
+      color:expiredFood.length?"#fee2e2":"#fef3c7",
+      borderColor:expiredFood.length?"#fca5a5":"#fcd34d",
+      titleColor:expiredFood.length?"#dc2626":"#92400e",
+      icon:"🥫", title:"FOOD & EXPIRY",
+      expired:expiredFood, soon:soonFood, dateKey:"expiry_date"
+    }),
+    e(BannerPanel,{
+      allItems:warrantyItems,
+      onDismiss:()=>dismissAll([...expiredWarranty,...soonWarranty],STORE_WARRANTY,setDismissedWarranty),
+      color:expiredWarranty.length?"#f5e6ff":"#ede9fe",
+      borderColor:expiredWarranty.length?"#c084fc":"#a78bfa",
+      titleColor:expiredWarranty.length?"#7c3aed":"#6d28d9",
+      icon:"🛡", title:"WARRANTY",
+      expired:expiredWarranty, soon:soonWarranty, dateKey:"warranty_date"
+    })
+  );
+}
+
+/* ─── APP ─── */
+/*
+  ID strategy:
+  - Client generates UUID localId for React keys and state management
+  - DB uses bigint GENERATED ALWAYS — we never send these to the DB on insert
+  - After save, server returns idMap {localId -> dbId} and we persist dbId
+  - On subsequent saves we send dbId so server does UPDATE not INSERT
+*/
+/* ─── Dev: insert test items using real shelf IDs ─── */
+async function runTestNotifications(){
+  const tok=sb.getToken();
+  if(!tok){alert("Not logged in");return;}
+  const payload=JSON.parse(atob(tok.split(".")[1]));
+  const userId=payload.sub;
+  if(!userId){alert("Cannot determine user ID");return;}
+
+  // Fetch real shelves from DB
+  const shelves=await sb.q("shelves?select=id&limit=20").catch(()=>[]);
+  if(!shelves||shelves.length===0){
+    alert("No shelves found. Save your apartment first to generate shelves.");
+    return;
+  }
+
+  const sid=s=>shelves[s%shelves.length].id;
+  const today=new Date();
+  const d=(n)=>{const x=new Date(today);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10);};
+
+  const testItems=[
+    // FOOD expiry
+    {user_id:userId,shelf_id:sid(0),item_type_id:47,item_name:"🧪 Snack — EXPIRED",         expiry_date:d(-2)},
+    {user_id:userId,shelf_id:sid(1),item_type_id:48,item_name:"🧪 Bread — expires TODAY",    expiry_date:d(0)},
+    {user_id:userId,shelf_id:sid(2),item_type_id:12,item_name:"🧪 Pasta — 3 days",           expiry_date:d(3)},
+    {user_id:userId,shelf_id:sid(3),item_type_id:16,item_name:"🧪 Coffee — 10 days",         expiry_date:d(10)},
+    {user_id:userId,shelf_id:sid(4),item_type_id:15,item_name:"🧪 Oil — 25 days",            expiry_date:d(25)},
+    // WARRANTY
+    {user_id:userId,shelf_id:sid(0),item_type_id:33,item_name:"🧪 Laptop — WARRANTY EXPIRED",warranty_date:d(-1)},
+    {user_id:userId,shelf_id:sid(1),item_type_id:20,item_name:"🧪 Appliance — warranty 5d",  warranty_date:d(5)},
+    {user_id:userId,shelf_id:sid(2),item_type_id:21,item_name:"🧪 Hairdryer — warranty 20d", warranty_date:d(20)},
+  ];
+
+  let ok=0,fail=0;
+  for(const item of testItems){
+    try{
+      await sb.q("user_items","POST",item);
+      ok++;
+    }catch(ex){fail++;}
+  }
+
+  const cleanup="DELETE FROM user_items WHERE item_name LIKE \'🧪 %\'";
+  alert(`✅ Inserted ${ok} test items${fail?" ("+fail+" failed)":""}.
+
+Refresh the page to see banners.
+
+To clean up, run in Supabase SQL Editor:
+${cleanup}`);
+}
+
+function App(){
+  const[session,setSession]=useState(()=>(localStorage.getItem("sb_t")||localStorage.getItem("sb_r"))?{token:1}:null);
+  const[apts,setApts]=useState([]);
+  // aptId here is the DB bigint id (or null if not yet saved)
+  const[aptId,setAptId]=useState(null);
+  const[aptLocalName,setAptLocalName]=useState("");
+  const[rooms,setRooms]=useState([]);
+  // furniture: { roomLocalId -> [furnObj] }
+  // furnObj has: localId (uuid), dbId (bigint|null), roomLocalId, roomDbId(null until saved)
+  const[furniture,setFurniture]=useState({});
+  const[activeRoom,setActiveRoom]=useState(null); // localId
+  const[selFurnId,setSelFurnId]=useState(null);   // localId
+  const[highlightFurnDbId,setHighlightFurnDbId]=useState(null); // after place-item, highlight furniture
+  const[highlightShelfDbId,setHighlightShelfDbId]=useState(null); // highlight specific shelf
+  const[roomSizes,setRoomSizes]=useState({});
+  const[modal,setModal]=useState(null);
+  const[saveStatus,setSaveStatus]=useState("idle");
+  const[dirty,setDirty]=useState(false);
+
+  // Load item types from DB once after login
+  useEffect(()=>{
+    if(!session)return;
+    sb.q("items?select=id,name,tags&order=id.asc").then(rows=>{
+      if(rows&&rows.length){
+        ITEM_TYPES=rows.map(r=>({id:r.id, name:r.name, tags:r.tags||{}}));
+        console.log("[items] loaded "+ITEM_TYPES.length+" types from DB");
+      }
+    }).catch(e=>console.warn("[items] failed to load:",e));
+  },[session]);
+
+  // Load apartments list from DB
+  useEffect(()=>{
+    if(!session)return;
+    sb.q("apartments?select=*&order=created_at.desc&user_id=eq."+getUserId()).then(d=>{
+      setApts(d||[]);
+      if(d&&d.length){loadApt(d[0]);}
+    }).catch(()=>{
+      // Try without user_id filter if RLS handles it
+      sb.q("apartments?select=*&order=created_at.desc").then(d=>{
+        setApts(d||[]);
+        if(d&&d.length)loadApt(d[0]);
+      }).catch(()=>{});
+    });
+  },[session]);
+
+  function getUserId(){
+    try{const t=sb.getToken();if(!t)return"";const p=JSON.parse(atob(t.split(".")[1]));return p.sub||"";}catch{return"";}
+  }
+
+  function loadApt(apt){
+    setAptId(apt.id);
+    setAptLocalName(apt.name||"");
+    setSelFurnId(null);setActiveRoom(null);setFurniture({});setRoomSizes({});setRooms([]);
+    sb.q("rooms?apartment_id=eq."+apt.id+"&select=*").then(async rs=>{
+      const rl=rs||[];
+      // Map DB rooms to local format (localId = uid, dbId = db bigint)
+      const localRooms=rl.map(r=>({...r,localId:uid(),dbId:r.id,type:r.type}));
+      setRooms(localRooms);
+      if(!localRooms.length)return;
+      setActiveRoom(localRooms[0].localId);
+      const rids=rl.map(r=>r.id).join(",");
+      const fs=await sb.q("furniture?room_id=in.("+rids+")&select=*").catch(()=>[]);
+      const byRoom={};
+      localRooms.forEach(r=>{byRoom[r.localId]=[];});
+
+      // Load room sizes if columns exist
+      const sizeMap={};
+      localRooms.forEach(r=>{
+        if(r.width&&r.height)sizeMap[r.localId]={w:r.width,h:r.height};
+      });
+      setRoomSizes(sizeMap);
+
+      // Load shelves for all furniture
+      const furnIds=(fs||[]).map(f=>f.id).filter(Boolean);
+      let allShelves=[];
+      if(furnIds.length>0){
+        allShelves=await sb.q("shelves?furniture_id=in.("+furnIds.join(",")+")&select=*&order=level.asc").catch(()=>[]);
+      }
+
+      // Load user_items — single source of truth for placed items
+      // user_items has: shelf_id, item_type_id, item_name, id, expiry_date
+      const shelfIds=(allShelves||[]).map(s=>s.id).filter(Boolean);
+      let placedMap={}; // shelfDbId -> {item_type_id, count, items:[]}
+      if(shelfIds.length>0){
+        const userToken=await sb.validToken().catch(()=>null);
+        const placed=await sb.q(
+          "user_items?shelf_id=in.("+shelfIds.join(",")+")&select=id,shelf_id,item_type_id,item_name,expiry_date"
+        ).catch(()=>[]);
+        (placed||[]).forEach(p=>{
+          if(!p.shelf_id)return; // skip unplaced
+          if(!placedMap[p.shelf_id]) placedMap[p.shelf_id]={item_type_id:p.item_type_id,count:0,items:[]};
+          placedMap[p.shelf_id].count++;
+          placedMap[p.shelf_id].items.push({id:p.id,name:p.item_name,expiry:p.expiry_date});
+        });
+      }
+
+      (fs||[]).forEach(f=>{
+        const parentRoom=localRooms.find(r=>r.dbId===f.room_id);
+        if(!parentRoom)return;
+
+        // Rebuild shelfGrid from flat shelves rows
+        const furnShelves=(allShelves||[]).filter(s=>s.furniture_id===f.id);
+        let shelfGrid=null;
+        if(furnShelves.length>0){
+          // Group by level (row), sort by position (col)
+          const rows={};
+          furnShelves.forEach(s=>{
+            const row=s.level||0;
+            const col=s.position||0;
+            if(!rows[row])rows[row]=[];
+            // itemId: first check placed_items (source of truth), fallback shelves.item_type_id
+            const pm=placedMap[s.id];
+            const itemId=pm?.item_type_id||s.item_type_id||null;
+            const itemCount=pm?.count||0;
+            rows[row][col]={
+              id:uid(),
+              shelfDbId:s.id,
+              shelfType:s.shelf_type||"shelf",
+              size:s.size_class||"medium",
+              flex:s.flex||1,
+              itemId,
+              itemCount,
+              items: pm?.items||[]  // actual placed user_items with names
+            };
+          });
+          shelfGrid=Object.keys(rows).sort((a,b)=>+a-+b).map(ri=>
+            (rows[ri]||[]).filter(Boolean)
+          ).filter(row=>row.length>0);
+        }
+
+        const fw=f.width||80, fh=f.height||60, frot=f.rotation||0;
+        const fdispW=(frot===90||frot===270)?fh:fw;
+        const fdispH=(frot===90||frot===270)?fw:fh;
+        // Convert stored top-left x,y → center cx,cy
+        const fcx=(f.x||80)+fw/2, fcy=(f.y||80)+fh/2;
+        byRoom[parentRoom.localId].push({
+          localId:uid(),dbId:f.id,
+          roomLocalId:parentRoom.localId,roomDbId:f.room_id,
+          type:f.type,x:fcx,y:fcy,
+          w:fw,h:fh,
+          z:f.z||0,rotation:frot,
+          category:f.category||"storage",
+          shelfGrid
+        });
+      });
+      setFurniture(byRoom);
+    }).catch(()=>{});
+  }
+
+  async function manualSave(){
+    if(!dirty&&aptId)return; // nothing changed
+    setSaveStatus("saving");
+    try{
+      const userToken=await sb.validToken();
+      if(!userToken){setSaveStatus("errr");return;}
+
+      const allF=Object.entries(furniture).flatMap(([roomLocalId,farr])=>
+        farr.map(f=>({
+          localId:f.localId, dbId:f.dbId||null,
+          roomLocalId, roomDbId:f.roomDbId||null,
+          type:f.type, x:f.x-f.w/2, y:f.y-f.h/2, z:f.z||0,
+          width:f.w, height:f.h,
+          rotation:f.rotation||0,
+          category:f.category||"storage",
+          // Convert shelfGrid -> shelves array for server
+          shelves:(f.shelfGrid||[]).flatMap((row,ri)=>
+            row.map((cell,ci)=>({
+              localId:cell.id,
+              level:f.z||0,
+              position:ci,
+              shelf_type:cell.shelfType||"shelf",
+              size_class:cell.size||"medium",
+              flex:cell.flex||1,
+              item_type_id:cell.itemId||null,
+              allowed_types:cell.itemId?[cell.itemId]:null
+            }))
+          )
+        }))
+      );
+
+      const roomsPayload=rooms.map(r=>({
+        localId:r.localId, dbId:r.dbId||null, type:r.type,
+        // room sizes stored as extra fields (need columns in DB or store client-side)
+        width:roomSizes[r.localId]?.w||null,
+        height:roomSizes[r.localId]?.h||null,
+      }));
+
+      const res=await fetch(SB_URL+"/functions/v1/save-layout",{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "apikey":SB_KEY,
+          "Authorization":"Bearer "+SB_KEY,
+          "x-user-token":userToken
+        },
+        body:JSON.stringify({
+          apartment:{dbId:aptId||null, name:aptLocalName},
+          rooms:roomsPayload,
+          furniture:allF
+        })
+      });
+      const data=await res.json();
+      if(!res.ok)throw new Error(JSON.stringify(data));
+
+      // Update local state with server-assigned dbIds
+      const{aptDbId, idMap}=data;
+      if(aptDbId&&!aptId)setAptId(aptDbId);
+
+      // Update rooms with their new dbIds
+      setRooms(prev=>prev.map(r=>({
+        ...r,
+        dbId:idMap[r.localId]||r.dbId||null
+      })));
+
+      // Update furniture with new dbIds and correct roomDbIds
+      setFurniture(prev=>{
+        const next={};
+        Object.entries(prev).forEach(([roomLocalId,farr])=>{
+          next[roomLocalId]=farr.map(f=>({
+            ...f,
+            dbId:idMap[f.localId]||f.dbId||null,
+            roomDbId:idMap[roomLocalId]||f.roomDbId||null
+          }));
+        });
+        return next;
+      });
+
+      // Refresh apartments list with new dbId
+      if(aptDbId){
+        setApts(prev=>{
+          const exists=prev.find(a=>a.id===aptDbId);
+          if(exists)return prev.map(a=>a.id===aptDbId?{...a,name:aptLocalName}:a);
+          return [{id:aptDbId,name:aptLocalName,created_at:new Date().toISOString()},...prev];
+        });
+      }
+
+      setSaveStatus("saved");setDirty(false);
+    }catch(ex){console.error(ex);setSaveStatus("errr");}
+  }
+
+  function setR(fn){setRooms(p=>{const n=typeof fn==="function"?fn(p):fn;setDirty(true);return n;});}
+  function setF(fn){setFurniture(p=>{const n=typeof fn==="function"?fn(p):fn;setDirty(true);return n;});}
+
+  function createApt(name){
+    // Don't save to DB yet — just create local state, save on button press
+    const localApt={id:null,name,created_at:new Date().toISOString(),_local:true};
+    setApts(p=>[localApt,...p]);
+    setAptId(null);setAptLocalName(name);
+    setRooms([]);setFurniture({});setActiveRoom(null);setRoomSizes({});
+    setDirty(true);
+  }
+  function addRoom(type){
+    const r={localId:uid(),dbId:null,type};
+    setR(p=>[...p,r]);
+    setFurniture(p=>({...p,[r.localId]:[]}));
+    setActiveRoom(r.localId);
+  }
+  function deleteRoom(localId){
+    setR(p=>p.filter(r=>r.localId!==localId));
+    setFurniture(p=>{const n={...p};delete n[localId];return n;});
+    if(activeRoom===localId){const next=rooms.find(r=>r.localId!==localId);setActiveRoom(next?next.localId:null);}
+  }
+  function addFurn(f){
+    if(!activeRoom)return;
+    const furn={...f,localId:uid(),dbId:null,roomLocalId:activeRoom,roomDbId:null};
+    setF(p=>({...p,[activeRoom]:[...(p[activeRoom]||[]),furn]}));
+    setSelFurnId(furn.localId);
+  }
+  function updateFurn(f){
+    const rId=f.roomLocalId||activeRoom;
+    setF(p=>({...p,[rId]:(p[rId]||[]).map(x=>x.localId===f.localId?f:x)}));
+  }
+  function deleteFurn(localId){
+    if(!activeRoom)return;
+    setF(p=>({...p,[activeRoom]:(p[activeRoom]||[]).filter(f=>f.localId!==localId)}));
+    setSelFurnId(null);
+  }
+  function logout(){sb.clearSession();setSession(null);}
+  const userId=getUserId();
+
+  if(!session)return e(AuthScreen,{onAuth:setSession});
+
+  const activeRoomData=rooms.find(r=>r.localId===activeRoom);
+  const roomFurn=(activeRoom&&furniture[activeRoom])||[];
+  const selFurn=roomFurn.find(f=>f.localId===selFurnId)||null;
+  const rc=activeRoomData?ROOM_COLORS[activeRoomData.type]||"#94a3b8":"#6366f1";
+  const constructorFurn=modal&&modal.type==="constr"?modal.furn:null;
+
+  return e("div",{id:"app"},
+    /* TOPBAR */
+    e("div",{className:"topbar"},
+      e("div",{className:"logo"},"ApartmentOS"),
+      e("select",{className:"apt-sel",value:aptId!=null?String(aptId):"",onChange:x=>{const apt=apts.find(a=>String(a.id)===x.target.value);if(apt)loadApt(apt);}},
+        apts.length===0&&e("option",{value:""},"— no apartments —"),
+        apts.map(a=>e("option",{key:a.id||a.name,value:a.id||""},a.name+(a._local?" *":"")))
+      ),
+      e("button",{className:"btn sm",onClick:()=>setModal("apt")},"+ Apartment"),
+      e("div",{className:"spacer"}),
+      dirty&&e("span",{style:{fontSize:11,color:"#f59e0b",fontFamily:"var(--mono)"}},"● unsaved"),
+      saveStatus==="saving"&&e("span",{style:{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}},"saving..."),
+      saveStatus==="saved"&&!dirty&&e("span",{style:{fontSize:11,color:"var(--success)",fontFamily:"var(--mono)"}},"✓ saved"),
+      saveStatus==="errr"&&e("span",{style:{fontSize:11,color:"var(--danger)",fontFamily:"var(--mono)"}},"✕ save error"),
+      aptId&&e("button",{className:"btn sm",onClick:manualSave,disabled:saveStatus==="saving",
+        style:{background:dirty?"var(--accent)":"var(--surface2)",borderColor:dirty?"var(--accent)":"var(--border)",color:dirty?"white":"var(--text3)"}},
+        saveStatus==="saving"?"...":"💾 Save"),
+      e("button",{className:"btn sec sm",onClick:logout},"Sign Out"),
+      e("button",{className:"btn sec sm",onClick:runTestNotifications,
+        title:"Insert test items with expiry/warranty dates to test banners",
+        style:{fontSize:10,opacity:.6}
+      },"🧪 Test")
+    ),
+    /* EXPIRY BANNER */
+    e(NotificationBanner,{userId}),
+    /* SEARCH BAR */
+    e("div",{style:{display:"flex",gap:8,alignItems:"center",padding:"0 12px",marginBottom:8}},
+      e(SearchBar,{aptId,onHighlight:(r)=>{
+        if(!r.location){return;}
+        // Switch to correct room
+        const room=rooms.find(rm=>rm.dbId===r.location.room_id);
+        if(room) setActiveRoom(room.localId);
+        // Set highlights (furniture + specific shelf)
+        setHighlightFurnDbId(r.location.furniture_id||null);
+        setHighlightShelfDbId(r.location.shelf_id||null);
+        // Find furniture in local state
+        const allFurn=Object.values(furniture).flat();
+        const found=allFurn.find(f=>f.dbId===r.location.furniture_id);
+        if(found){
+          setSelFurnId(found.localId);
+          // Auto-open ShelfConstructor so highlighted shelf is immediately visible
+          setModal({type:"constr",furn:found});
+        }
+        setTimeout(()=>{setHighlightShelfDbId(null);setHighlightFurnDbId(null);},6000);
+      }}),
+      e("button",{className:"btn sm",style:{whiteSpace:"nowrap"},
+        onClick:()=>setModal("additem"),disabled:!aptId},
+        "➕ Item")
+    ),
+    /* WORKSPACE */
+    e("div",{className:"workspace"},
+      /* SIDEBAR */
+      e("div",{className:"sidebar"},
+        e("div",{className:"sidebar-head"},e("div",{className:"sidebar-title"},"Rooms"),e("button",{className:"btn sm",style:{padding:"5px 10px"},onClick:()=>setModal("room")},"+")),
+        e("div",{className:"room-list"},
+          rooms.length===0&&e("div",{style:{color:"var(--text3)",fontSize:12,padding:"12px 8px"}},"Press + to add a room"),
+          rooms.map(r=>e("button",{key:r.localId,className:"room-chip"+(activeRoom===r.localId?" active":""),onClick:()=>{setActiveRoom(r.localId);setSelFurnId(null);}},
+            e("div",{className:"room-dot",style:{background:ROOM_COLORS[r.type]||"#94a3b8"}}),
+            r.type,
+            e("button",{className:"room-chip-del",onClick:ev=>{ev.stopPropagation();deleteRoom(r.localId);}},"✕")
+          ))
+        )
+      ),
+      /* CANVAS */
+      e("div",{className:"canvas-wrap"},
+        e("div",{className:"canvas-toolbar"},
+          activeRoomData
+            ? e(React.Fragment,null,
+                e("div",{style:{width:9,height:9,borderRadius:"50%",background:rc,flexShrink:0}}),
+                e("div",{className:"canvas-name"},activeRoomData.type),
+                e("div",{style:{width:1,height:18,background:"var(--border)",margin:"0 6px"}}),
+                e("span",{style:{fontSize:11,color:"var(--text3)"}},"Drag — move · 2× click — shelf constructor")
+              )
+            : e("span",{style:{fontSize:13,color:"var(--text3)"}},"Select a room"),
+          e("div",{className:"spacer"}),
+          activeRoom&&e("button",{className:"btn sm",onClick:()=>setModal("addfurn")},"+ Furniture")
+        ),
+        !activeRoom
+          ? e("div",{className:"empty",style:{flex:1}},e("div",{className:"empty-icon"},"🏠"),e("div",{className:"empty-text"},"Select or create a room"))
+          : e(RoomCanvas,{room:activeRoomData,furniture:roomFurn,selId:selFurnId,
+              highlightFurnDbId,highlightShelfDbId,
+              roomW:roomSizes[activeRoom]?.w||800,roomH:roomSizes[activeRoom]?.h||600,
+              onResize:(w,h)=>{setRoomSizes(p=>({...p,[activeRoom]:{w,h}}));setDirty(true);},
+              onSelect:id=>setSelFurnId(id),onUpdateFurn:updateFurn,
+              onOpenConstructor:f=>setModal({type:"constr",furn:f})})
+      ),
+      /* RIGHT PANEL */
+      e(RightPanel,{furn:selFurn,onChange:updateFurn,onDelete:deleteFurn,onOpenConstructor:f=>setModal({type:"constr",furn:f}),roomW:roomSizes[activeRoom]?.w||800,roomH:roomSizes[activeRoom]?.h||600})
+    ),
+    /* MODALS */
+    modal==="apt"&&e(AddAptModal,{onClose:()=>setModal(null),onAdd:name=>{createApt(name);setModal(null);}}),
+    modal==="additem"&&e(AddItemModal,{onClose:()=>setModal(null),aptId,
+      onItemPlaced:(payload)=>{
+        const {shelfDbId,furnDbId,itemType,itemName,expiryDate,warrantyDate}=payload||{};
+        // Highlight the furniture and shelf where item was placed
+        setHighlightShelfDbId(shelfDbId);
+        setHighlightFurnDbId(furnDbId);
+
+        // Update local state immediately (so no reload needed)
+        setFurniture(prev=>{
+          const next={...prev};
+          for(const roomKey of Object.keys(next)){
+            const arr=next[roomKey];
+            const idx=arr.findIndex(f=>f.dbId===furnDbId);
+            if(idx===-1) continue;
+            const f=arr[idx];
+            if(!f.shelfGrid) break;
+            const newGrid=f.shelfGrid.map(row=>row.map(cell=>{
+              if(cell.shelfDbId!==shelfDbId) return cell;
+              const items=(cell.items||[]);
+              const newItem={id:uid(),name:itemName||itemType?.name||"Item",item_type_id:itemType?.id||null,expiry:expiryDate||null,warranty:warrantyDate||null};
+              return {...cell,items:[...items,newItem],itemId:(itemType?.id||cell.itemId||null)};
+            }));
+            const updated={...f,shelfGrid:newGrid};
+            const newArr=[...arr]; newArr[idx]=updated;
+            next[roomKey]=newArr;
+            break;
+          }
+          return next;
+        });
+
+        // Switch to correct room + select the furniture
+        const allFurn=Object.values(furniture).flat();
+        const placedFurn=allFurn.find(f=>f.dbId===furnDbId);
+        if(placedFurn){
+          setActiveRoom(placedFurn.roomLocalId);
+          setSelFurnId(placedFurn.localId);
+        }
+
+        // Clear highlight after 4 seconds
+        setTimeout(()=>{setHighlightShelfDbId(null);setHighlightFurnDbId(null);},4000);
+      }}),
+    modal==="room"&&e(AddRoomModal,{onClose:()=>setModal(null),onAdd:addRoom}),
+    modal==="addfurn"&&e(AddFurnModal,{onClose:()=>setModal(null),roomType:activeRoomData?.type||"",onAdd:f=>{addFurn(f);setModal(null);}}),
+    constructorFurn&&e(ShelfConstructor,{furn:constructorFurn,onClose:()=>setModal(null),onChange:f=>{updateFurn(f);setModal(null);}})
+  );
+}
+
+ReactDOM.render(e(App),document.getElementById("app"));
+</script>
+</body>
+</html>
