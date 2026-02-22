@@ -1962,12 +1962,14 @@ function App(){
         return next;
       });
 
-      // Refresh apartments list with new dbId
+      // Refresh apartments list — replace local _local entry with real DB record
       if(aptDbId){
         setApts(prev=>{
-          const exists=prev.find(a=>a.id===aptDbId);
-          if(exists)return prev.map(a=>a.id===aptDbId?{...a,name:aptLocalName}:a);
-          return [{id:aptDbId,name:aptLocalName,created_at:new Date().toISOString()},...prev];
+          // Remove any local placeholder with same name, update existing DB record, or prepend new
+          const withoutLocal=prev.filter(a=>!(a._local&&a.name===aptLocalName)&&a.id!==null);
+          const exists=withoutLocal.find(a=>a.id===aptDbId);
+          if(exists)return withoutLocal.map(a=>a.id===aptDbId?{...a,name:aptLocalName}:a);
+          return [{id:aptDbId,name:aptLocalName,created_at:new Date().toISOString()},...withoutLocal];
         });
       }
 
@@ -2011,7 +2013,9 @@ function App(){
     // Remove from selector list, then auto-load next apartment if any
     setApts(p=>{
       const remaining=p.filter(a=>a.id!==aptId&&!(a._local&&a.name===aptLocalName));
-      if(remaining.length>0&&remaining[0].id) loadApt(remaining[0]);
+      if(remaining.length>0&&remaining[0].id){
+        setTimeout(()=>loadApt(remaining[0]),0);
+      }
       return remaining;
     });
   }
