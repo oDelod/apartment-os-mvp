@@ -504,9 +504,22 @@ function ShelfConstructor({furn,onClose,onChange,highlightShelfDbId=null}){
             (selData.items&&selData.items.length>0) ? e("div",{style:{background:"var(--surface3)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 10px",display:"flex",flexDirection:"column",gap:6}},
               e("div",{style:{fontSize:10,fontWeight:800,color:"var(--text2)"}},`Items on this shelf: ${selData.items.length}`),
               e("div",{style:{display:"flex",flexDirection:"column",gap:4,maxHeight:120,overflowY:"auto"}},
-                selData.items.slice().reverse().map(it=>e("div",{key:it.id||Math.random(),style:{fontSize:11,color:"var(--text)",display:"flex",justifyContent:"space-between",gap:8}},
-                  e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},it.name||("ID "+it.item_type_id)),
-                  (it.expiry||it.warranty) ? e("span",{style:{fontSize:10,color:"var(--text3)",fontFamily:"var(--mono)"}},(it.expiry?("⏳ "+it.expiry):"")+(it.expiry&&it.warranty?" · ":"")+(it.warranty?("🛡 "+it.warranty):"")) : null
+                selData.items.slice().reverse().map(it=>e("div",{key:it.id||Math.random(),style:{fontSize:11,color:"var(--text)",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}},
+                  e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}},it.name||("ID "+it.item_type_id)),
+                  (it.expiry||it.warranty) ? e("span",{style:{fontSize:10,color:"var(--text3)",fontFamily:"var(--mono)"}},(it.expiry?("⏳ "+it.expiry):"")+(it.expiry&&it.warranty?" · ":"")+(it.warranty?("🛡 "+it.warranty):"")) : null,
+                  e("button",{
+                    title:"Delete this item",
+                    style:{background:"none",border:"none",cursor:"pointer",color:"var(--danger)",fontSize:13,padding:"0 2px",flexShrink:0,lineHeight:1},
+                    onClick:async()=>{
+                      if(!it.id)return;
+                      if(!window.confirm("Delete "+(it.name||"this item")+"?"))return;
+                      try{
+                        await sb.q("user_items?id=eq."+it.id,"DELETE");
+                        // Remove from local cell state
+                        updCell(sel.row,sel.col,{items:selData.items.filter(x=>x.id!==it.id),itemCount:(selData.itemCount||1)-1});
+                      }catch(ex){alert("Delete failed: "+ex.message);}
+                    }
+                  },"🗑")
                 ))
               )
             ) : null,
@@ -663,8 +676,15 @@ function AddFurnModal({onClose,onAdd,roomType}){
   function confirm(){
     if(!selType)return;
     const def=furnDef(selType);
-    onAdd({id:uid(),type:selType,category:tab==="anchor"?"anchor":"storage",
-      x:80,y:80,z:zv,w:def.w,h:def.h,rotation:0,shelfGrid:null});
+    const isStorage=tab==="storage";
+    // Default 3-cell grid so shelves exist in DB immediately after Save
+    const defaultGrid=isStorage?[
+      [{id:uid(),shelfType:"shelf",size:"medium",itemId:null,flex:2},
+       {id:uid(),shelfType:"shelf",size:"medium",itemId:null,flex:2}],
+      [{id:uid(),shelfType:"drawer",size:"medium",itemId:null,flex:1}]
+    ]:null;
+    onAdd({id:uid(),type:selType,category:isStorage?"storage":"anchor",
+      x:80,y:80,z:zv,w:def.w,h:def.h,rotation:0,shelfGrid:defaultGrid});
     onClose();
   }
 
@@ -986,13 +1006,31 @@ function RightPanel({furn,onChange,onDelete,onOpenConstructor,roomW,roomH}){
               fontSize:11,padding:"4px 0",
               borderBottom: i<allItems.length-1?"1px solid var(--border)30":"none"
             }},
-              e("div",null,
+              e("div",{style:{flex:1,overflow:"hidden"}},
                 e("span",{style:{fontWeight:700,color:"var(--text1)"}},it.name||"?"),
                 e("span",{style:{fontSize:9,color:"var(--text3)",marginLeft:6}},
                   `shelf ${it.row}-${it.col}`)
               ),
-              it.expiry&&e("span",{style:{fontSize:10,color:daysUntil(it.expiry)<=0?"#ef4444":daysUntil(it.expiry)<=7?"#f59e0b":"var(--text3)"}},
-                "⏳ "+it.expiry)
+              it.expiry&&e("span",{style:{fontSize:10,color:daysUntil(it.expiry)<=0?"#ef4444":daysUntil(it.expiry)<=7?"#f59e0b":"var(--text3)",marginRight:4}},
+                "⏳ "+it.expiry),
+              e("button",{
+                title:"Delete item",
+                style:{background:"none",border:"none",cursor:"pointer",color:"var(--danger)",fontSize:13,padding:"0 2px",flexShrink:0},
+                onClick:async(ev)=>{
+                  ev.stopPropagation();
+                  if(!it.id)return;
+                  if(!window.confirm("Delete "+(it.name||"this item")+"?"))return;
+                  try{
+                    await sb.q("user_items?id=eq."+it.id,"DELETE");
+                    // Refresh furniture state — remove item from cell
+                    onChange({...furn,shelfGrid:furn.shelfGrid.map(row=>row.map(cell=>{
+                      if(!cell.items)return cell;
+                      const newItems=cell.items.filter(x=>x.id!==it.id);
+                      return newItems.length!==cell.items.length?{...cell,items:newItems,itemCount:(cell.itemCount||1)-1}:cell;
+                    }))});
+                  }catch(ex){alert("Delete failed: "+ex.message);}
+                }
+              },"🗑")
             ))
           )
         );
@@ -1122,7 +1160,7 @@ async function geminiMatchItem(userText){
 }
 
 /* ─── AddItemModal: Gemini розпізнавання → вибір → дати → пошук місця або вручну ─── */
-function AddItemModal({onClose,aptId,onItemPlaced}){
+function AddItemModal({onClose,aptId,onItemPlaced,dirty,manualSave}){
   const[step,setStep]=useState("search"); // search | found | auto_results | manual
   const[itemName,setItemName]=useState("");   // USER's own name for the item (stays forever)
   const[matches,setMatches]=useState([]);
@@ -1161,6 +1199,10 @@ function AddItemModal({onClose,aptId,onItemPlaced}){
   async function findAutoPlace(){
     setLoading(true);setError(null);
     try{
+      // Зберегти незбережені полиці перед пошуком
+      if(dirty&&typeof manualSave==="function"){
+        try{await manualSave();}catch(e){console.warn("Auto-save before search failed:",e);}
+      }
       const tok=await sb.validToken();
       const res=await fetch(SB_URL+"/functions/v1/find-shelf",{
         method:"POST",
@@ -1833,6 +1875,7 @@ function App(){
         });
       }
 
+      let needsDirtySave=false;
       (fs||[]).forEach(f=>{
         const parentRoom=localRooms.find(r=>Number(r.dbId)===Number(f.room_id));
         if(!parentRoom)return;
@@ -1865,6 +1908,15 @@ function App(){
           shelfGrid=Object.keys(rows).sort((a,b)=>+a-+b).map(ri=>
             (rows[ri]||[]).filter(Boolean)
           ).filter(row=>row.length>0);
+        } else if(f.category==="storage"||(f.category!=="anchor"&&isFurnStorage(f))){
+          // Storage furniture with no shelves in DB — create default grid
+          // shelfDbId=null so save-layout will INSERT them on next Save
+          shelfGrid=[
+            [{id:uid(),shelfType:"shelf",size:"medium",itemId:null,flex:2,shelfDbId:null,items:[],itemCount:0},
+             {id:uid(),shelfType:"shelf",size:"medium",itemId:null,flex:2,shelfDbId:null,items:[],itemCount:0}],
+            [{id:uid(),shelfType:"drawer",size:"medium",itemId:null,flex:1,shelfDbId:null,items:[],itemCount:0}]
+          ];
+          needsDirtySave=true; // flag to trigger auto-save after load
         }
 
         const fw=f.width||80, fh=f.height||60, frot=f.rotation||0;
@@ -1883,6 +1935,8 @@ function App(){
         });
       });
       setFurniture(byRoom);
+      // Some storage furniture had no shelves in DB — mark dirty so next Save creates them
+      if(needsDirtySave) setDirty(true);
     }).catch(()=>{});
   }
 
@@ -2175,7 +2229,7 @@ function App(){
     ),
     /* MODALS */
     modal==="apt"&&e(AddAptModal,{onClose:()=>setModal(null),onAdd:name=>{createApt(name);setModal(null);}}),
-    modal==="additem"&&e(AddItemModal,{onClose:()=>setModal(null),aptId,
+    modal==="additem"&&e(AddItemModal,{onClose:()=>setModal(null),aptId,dirty,manualSave,
       onItemPlaced:(payload)=>{
         const {shelfDbId,furnDbId,itemType,itemName,expiryDate,warrantyDate}=payload||{};
         // Highlight the furniture and shelf where item was placed
