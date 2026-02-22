@@ -420,7 +420,7 @@ function AuthScreen({onAuth}){
     e("div",{className:"auth-card"},
       e("div",null,e("div",{className:"auth-title"},"ApartmentOS"),e("div",{className:"auth-sub"},"Apartment Layout Editor")),
       err&&e("div",{className:"err"},err),
-      e("div",{className:"field"},e("label",null,"Email"),e("input",{className:"input",type:"email",value:email,placeholder:"you@example.com",onChange:x=>setEmail(x.target.value),onKeyDown:x=>x.key==="Enter"&&submit()})),
+      e("div",{className:"field"},e("label",null,"Email"),e("input",{className:"input",type:"email",value:email,placeholder:"you@example.com",maxLength:100,onChange:x=>setEmail(x.target.value),onKeyDown:x=>x.key==="Enter"&&submit()})),
       e("div",{className:"field"},e("label",null,"Password"),e("input",{className:"input",type:"password",value:pass,placeholder:"••••••••",onChange:x=>setPass(x.target.value),onKeyDown:x=>x.key==="Enter"&&submit()})),
       e("button",{className:"btn",onClick:submit,disabled:loading},loading?"...":mode==="login"?"Sign In":"Sign up"),
       e("div",{className:"toggle-link"},mode==="login"?"No account? ":"Have an account? ",e("span",{onClick:()=>{setMode(mode==="login"?"signup":"login");setErr("");}},mode==="login"?"Sign up":"Sign In"))
@@ -555,7 +555,7 @@ function ShelfConstructor({furn,onClose,onChange,highlightShelfDbId=null}){
             : e("div",null,
                 e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:5}},
                   "Assign item type (",filtItems.length,"):"),
-                e("input",{className:"item-search",placeholder:"Search...",value:search,onChange:x=>setSearch(x.target.value)}),
+                e("input",{className:"item-search",placeholder:"Search...",maxLength:60,value:search,onChange:x=>setSearch(x.target.value.slice(0,60))}),
                 e("div",{className:"item-list",style:{maxHeight:140}},
                   filtItems.slice(0,60).map(it=>e("div",{key:it.id,
                     className:"item-row"+(selData.itemId===it.id?" on":""),
@@ -721,7 +721,7 @@ function AddAptModal({onClose,onAdd}){
   const[name,setName]=useState("");
   function confirm(){if(name.trim()){onAdd(name.trim());onClose();}}
   return e(Modal,{title:"New Apartment",onClose,onConfirm:confirm,confirmLabel:"Create"},
-    e("div",{className:"field"},e("label",null,"Name"),e("input",{className:"input",autoFocus:true,value:name,placeholder:"My Apartment",onChange:x=>setName(x.target.value),onKeyDown:x=>x.key==="Enter"&&confirm()}))
+    e("div",{className:"field"},e("label",null,"Name"),e("input",{className:"input",autoFocus:true,value:name,maxLength:40,placeholder:"My Apartment",onChange:x=>setName(x.target.value.slice(0,40)),onKeyDown:x=>x.key==="Enter"&&confirm()}))
   );
 }
 
@@ -899,18 +899,26 @@ function NumInput({value,onChange,min,max,style}){
   useEffect(()=>{ if(!focused) setRaw(String(value??0)); },[value,focused]);
   function commit(str){
     let n=parseFloat(str.replace(",","."));
-    if(isNaN(n)) n=value??0;
+    if(isNaN(n)) n=value??min??0;
     if(min!=null) n=Math.max(min,n);
     if(max!=null) n=Math.min(max,n);
+    // Hard cap: never allow values that would crash layout
+    n=Math.min(n,9999);
+    n=Math.max(n,-(9999));
     setRaw(String(n));
     if(n!==value) onChange(n);
   }
   return e("input",{
     className:"input",type:"text",inputMode:"numeric",
     value:raw,
+    maxLength:6,
     style:{padding:"7px 10px",fontSize:13,...(style||{})},
     onFocus:()=>setFocused(true),
-    onChange:ev=>setRaw(ev.target.value),
+    onChange:ev=>{
+      // Only allow digits, dot, comma, minus
+      const v=ev.target.value.replace(/[^0-9.,-]/g,"");
+      if(v.length<=6) setRaw(v);
+    },
     onBlur:ev=>{setFocused(false);commit(ev.target.value);},
     onKeyDown:ev=>{if(ev.key==="Enter")commit(ev.target.value);}
   });
@@ -1180,12 +1188,13 @@ function AddItemModal({onClose,aptId,onItemPlaced}){
         e("div",{style:{display:"flex",gap:8}},
           e("input",{
             placeholder:"E.g. «Grandma's pot», «Green shampoo»...",
+            maxLength:80,
             value:itemName, autoFocus:true,
             style:{flex:1,padding:"10px 12px",borderRadius:8,
               border:"2px solid var(--accent)",
               background:"var(--surface2)",color:"var(--text1)",
               fontFamily:"var(--font)",fontSize:14,fontWeight:600},
-            onChange:ev=>onNameChange(ev.target.value),
+            onChange:ev=>onNameChange(ev.target.value.slice(0,80)),
             onKeyDown:ev=>ev.key==="Enter"&&handleSearch()
           }),
           e("button",{
@@ -1341,7 +1350,7 @@ function AddItemModal({onClose,aptId,onItemPlaced}){
       ),
 
       // Note
-      e("input",{placeholder:"✏️ Note (optional, e.g. «bought at IKEA»)",value:note,
+      e("input",{placeholder:"✏️ Note (optional, e.g. «bought at IKEA»)",maxLength:120,value:note,
         style:{padding:"9px 12px",borderRadius:8,border:"1px solid var(--border)",
           background:"var(--surface2)",color:"var(--text1)",fontFamily:"var(--font)",fontSize:13},
         onChange:ev=>setNote(ev.target.value)}),
@@ -1645,52 +1654,54 @@ function NotificationBanner({userId}){
   - On subsequent saves we send dbId so server does UPDATE not INSERT
 */
 /* ─── Dev: insert test items using real shelf IDs ─── */
-async function runTestNotifications(){
+async function runTestNotifications(aptId){
   const tok=sb.getToken();
   if(!tok){alert("Not logged in");return;}
   const payload=JSON.parse(atob(tok.split(".")[1]));
   const userId=payload.sub;
   if(!userId){alert("Cannot determine user ID");return;}
+  if(!aptId){alert("No apartment selected. Select or save an apartment first.");return;}
 
-  // Fetch real shelves from DB
-  const shelves=await sb.q("shelves?select=id&limit=20").catch(()=>[]);
-  if(!shelves||shelves.length===0){
-    alert("No shelves found. Save your apartment first to generate shelves.");
+  // Fetch shelves that belong to THIS apartment only
+  // apartments → rooms → furniture → shelves
+  const rooms=await sb.q("rooms?apartment_id=eq."+aptId+"&select=id").catch(()=>[]);
+  if(!rooms||!rooms.length){alert("No rooms in this apartment. Add some rooms and save first.");return;}
+  const roomIds=rooms.map(r=>r.id);
+
+  const furns=await sb.q("furniture?room_id=in.("+roomIds.join(",")+")"+"&select=id").catch(()=>[]);
+  if(!furns||!furns.length){alert("No furniture in this apartment. Add furniture and save first.");return;}
+  const furnIds=furns.map(f=>f.id);
+
+  const shelves=await sb.q("shelves?furniture_id=in.("+furnIds.join(",")+")"+"&select=id").catch(()=>[]);
+  if(!shelves||!shelves.length){
+    alert("No shelves found. Open storage furniture and add shelf rows, then save.")
     return;
   }
 
   const sid=s=>shelves[s%shelves.length].id;
-  const today=new Date();
-  const d=(n)=>{const x=new Date(today);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10);};
+  const d=(n)=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().slice(0,10);};
 
   const testItems=[
-    // FOOD expiry
-    {user_id:userId,shelf_id:sid(0),item_type_id:47,item_name:"🧪 Snack — EXPIRED",         expiry_date:d(-2)},
-    {user_id:userId,shelf_id:sid(1),item_type_id:48,item_name:"🧪 Bread — expires TODAY",    expiry_date:d(0)},
-    {user_id:userId,shelf_id:sid(2),item_type_id:12,item_name:"🧪 Pasta — 3 days",           expiry_date:d(3)},
-    {user_id:userId,shelf_id:sid(3),item_type_id:16,item_name:"🧪 Coffee — 10 days",         expiry_date:d(10)},
-    {user_id:userId,shelf_id:sid(4),item_type_id:15,item_name:"🧪 Oil — 25 days",            expiry_date:d(25)},
-    // WARRANTY
-    {user_id:userId,shelf_id:sid(0),item_type_id:33,item_name:"🧪 Laptop — WARRANTY EXPIRED",warranty_date:d(-1)},
-    {user_id:userId,shelf_id:sid(1),item_type_id:20,item_name:"🧪 Appliance — warranty 5d",  warranty_date:d(5)},
-    {user_id:userId,shelf_id:sid(2),item_type_id:21,item_name:"🧪 Hairdryer — warranty 20d", warranty_date:d(20)},
+    {user_id:userId,shelf_id:sid(0),item_type_id:47,item_name:"🧪 Snack — EXPIRED",          expiry_date:d(-2)},
+    {user_id:userId,shelf_id:sid(1),item_type_id:48,item_name:"🧪 Bread — expires TODAY",     expiry_date:d(0)},
+    {user_id:userId,shelf_id:sid(2),item_type_id:12,item_name:"🧪 Pasta — 3 days",            expiry_date:d(3)},
+    {user_id:userId,shelf_id:sid(3),item_type_id:16,item_name:"🧪 Coffee — 10 days",          expiry_date:d(10)},
+    {user_id:userId,shelf_id:sid(4),item_type_id:15,item_name:"🧪 Oil — 25 days",             expiry_date:d(25)},
+    {user_id:userId,shelf_id:sid(0),item_type_id:33,item_name:"🧪 Laptop — WARRANTY EXPIRED", warranty_date:d(-1)},
+    {user_id:userId,shelf_id:sid(1),item_type_id:20,item_name:"🧪 Appliance — warranty 5d",   warranty_date:d(5)},
+    {user_id:userId,shelf_id:sid(2),item_type_id:21,item_name:"🧪 Hairdryer — warranty 20d",  warranty_date:d(20)},
   ];
 
   let ok=0,fail=0;
   for(const item of testItems){
-    try{
-      await sb.q("user_items","POST",item);
-      ok++;
-    }catch(ex){fail++;}
+    try{await sb.q("user_items","POST",item);ok++;}catch(ex){fail++;}
   }
 
-  const cleanup="DELETE FROM user_items WHERE item_name LIKE \'🧪 %\'";
-  alert(`✅ Inserted ${ok} test items${fail?" ("+fail+" failed)":""}.
+  alert(`✅ Inserted ${ok} test items on ${shelves.length} shelf(ves) from your apartment.
 
 Refresh the page to see banners.
 
-To clean up, run in Supabase SQL Editor:
-${cleanup}`);
+To clean up: delete items with name starting "🧪" from Supabase.`);
 }
 
 function App(){
@@ -1937,10 +1948,14 @@ function App(){
   function setF(fn){setFurniture(p=>{const n=typeof fn==="function"?fn(p):fn;setDirty(true);return n;});}
 
   function createApt(name){
-    // Don't save to DB yet — just create local state, save on button press
-    const localApt={id:null,name,created_at:new Date().toISOString(),_local:true};
+    const trimmed=name.trim().slice(0,40);
+    if(!trimmed){alert("Apartment name cannot be empty.");return;}
+    if(apts.some(a=>a.name?.toLowerCase()===trimmed.toLowerCase())){
+      alert("An apartment with this name already exists. Choose a different name.");return;
+    }
+    const localApt={id:null,name:trimmed,created_at:new Date().toISOString(),_local:true};
     setApts(p=>[localApt,...p]);
-    setAptId(null);setAptLocalName(name);
+    setAptId(null);setAptLocalName(trimmed);
     setRooms([]);setFurniture({});setActiveRoom(null);setRoomSizes({});
     setDirty(true);
   }
@@ -1995,11 +2010,16 @@ function App(){
       saveStatus==="saving"&&e("span",{style:{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}},"saving..."),
       saveStatus==="saved"&&!dirty&&e("span",{style:{fontSize:11,color:"var(--success)",fontFamily:"var(--mono)"}},"✓ saved"),
       saveStatus==="errr"&&e("span",{style:{fontSize:11,color:"var(--danger)",fontFamily:"var(--mono)"}},"✕ save error"),
-      aptId&&e("button",{className:"btn sm",onClick:manualSave,disabled:saveStatus==="saving",
-        style:{background:dirty?"var(--accent)":"var(--surface2)",borderColor:dirty?"var(--accent)":"var(--border)",color:dirty?"white":"var(--text3)"}},
+      e("button",{className:"btn sm",onClick:manualSave,disabled:saveStatus==="saving"||(!aptId&&!aptLocalName),
+        title:(!aptId&&!aptLocalName)?"Create an apartment first":"Save layout",
+        style:{
+          background:dirty&&(aptId||aptLocalName)?"var(--accent)":"var(--surface2)",
+          borderColor:dirty&&(aptId||aptLocalName)?"var(--accent)":"var(--border)",
+          color:dirty&&(aptId||aptLocalName)?"white":"var(--text3)"
+        }},
         saveStatus==="saving"?"...":"💾 Save"),
       e("button",{className:"btn sec sm",onClick:logout},"Sign Out"),
-      e("button",{className:"btn sec sm",onClick:runTestNotifications,
+      e("button",{className:"btn sec sm",onClick:()=>runTestNotifications(aptId),
         title:"Insert test items with expiry/warranty dates to test banners",
         style:{fontSize:10,opacity:.6}
       },"🧪 Test")
@@ -2034,7 +2054,7 @@ function App(){
     e("div",{className:"workspace"},
       /* SIDEBAR */
       e("div",{className:"sidebar"},
-        e("div",{className:"sidebar-head"},e("div",{className:"sidebar-title"},"Rooms"),e("button",{className:"btn sm",style:{padding:"5px 10px"},onClick:()=>setModal("room")},"+")),
+        e("div",{className:"sidebar-head"},e("div",{className:"sidebar-title"},"Rooms"),e("button",{className:"btn sm",style:{padding:"5px 10px"},disabled:!aptLocalName&&!aptId,title:(!aptLocalName&&!aptId)?"Create an apartment first":"Add room",onClick:()=>{if(!aptLocalName&&!aptId){alert("Create an apartment first (+ Apartment).");return;}setModal("room");}},"+")),
         e("div",{className:"room-list"},
           rooms.length===0&&e("div",{style:{color:"var(--text3)",fontSize:12,padding:"12px 8px"}},"Press + to add a room"),
           rooms.map(r=>e("button",{key:r.localId,className:"room-chip"+(activeRoom===r.localId?" active":""),onClick:()=>{setActiveRoom(r.localId);setSelFurnId(null);}},
