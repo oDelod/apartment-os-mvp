@@ -1998,11 +1998,22 @@ function App(){
     if(aptId){
       await sb.q("apartments?id=eq."+aptId,"DELETE").catch(()=>{});
     }
-    // Reset local state
-    setAptId(null);setAptLocalName("");setRooms([]);setFurniture({});
-    setActiveRoom(null);setRoomSizes({});setDirty(false);setSaveStatus("idle");
-    // Remove from selector list
-    setApts(p=>p.filter(a=>a.id!==aptId&&!(a._local&&a.name===aptLocalName)));
+    // Reset local state — activeRoom first to prevent RoomCanvas crash
+    setActiveRoom(null);
+    setSelFurnId(null);
+    setAptId(null);
+    setAptLocalName("");
+    setRooms([]);
+    setFurniture({});
+    setRoomSizes({});
+    setDirty(false);
+    setSaveStatus("idle");
+    // Remove from selector list, then auto-load next apartment if any
+    setApts(p=>{
+      const remaining=p.filter(a=>a.id!==aptId&&!(a._local&&a.name===aptLocalName));
+      if(remaining.length>0&&remaining[0].id) loadApt(remaining[0]);
+      return remaining;
+    });
   }
 
   function addRoom(type){
@@ -2136,8 +2147,8 @@ function App(){
           e("div",{className:"spacer"}),
           activeRoom&&e("button",{className:"btn sm",onClick:()=>setModal("addfurn")},"+ Furniture")
         ),
-        !activeRoom
-          ? e("div",{className:"empty",style:{flex:1}},e("div",{className:"empty-icon"},"🏠"),e("div",{className:"empty-text"},"Select or create a room"))
+        (!activeRoom||!activeRoomData)
+          ? e("div",{className:"empty",style:{flex:1}},e("div",{className:"empty-icon"},"🏠"),e("div",{className:"empty-text"},activeRoom?"Loading...":"Select or create a room"))
           : e(RoomCanvas,{room:activeRoomData,furniture:roomFurn,selId:selFurnId,
               highlightFurnDbId,highlightShelfDbId,
               roomW:roomSizes[activeRoom]?.w||800,roomH:roomSizes[activeRoom]?.h||600,
